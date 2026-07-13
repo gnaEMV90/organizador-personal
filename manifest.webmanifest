@@ -1,7 +1,7 @@
 {
-  "name": "Mi Organizador Personal",
-  "short_name": "Organizador",
-  "description": "Tareas, calendario, listas y compras en un solo lugar.",
+  "name": "Planora",
+  "short_name": "Planora",
+  "description": "Tu día, en orden: tareas, calendario, listas y compras en un solo lugar.",
   "lang": "es-AR",
   "start_url": "/#hoy",
   "scope": "/",
