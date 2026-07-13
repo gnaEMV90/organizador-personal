@@ -33,9 +33,9 @@ Conectar este repositorio y usar:
 
 - Production branch: `main`
 - Framework preset: `None`
-- Build command: dejar vacío
-- Build output directory: `/`
-- Root directory: `/`
+- Build command: `exit 0`
+- Build output directory: `.`
+- Root directory: dejar vacío
 
 ## Roadmap
 
