@@ -1,4 +1,4 @@
-# Planora
+# Planorha
 
 **Tu día, en orden.**
 
@@ -6,9 +6,13 @@ Aplicación web personalizable para centralizar tareas, calendario, listas de co
 
 ## Estado actual
 
-✅ MVP web funcional cargado en `main`.
+✅ MVP publicado en `https://planorha.pages.dev`.
 
-La primera versión incluye persistencia local en el navegador y está preparada para publicarse como sitio estático en Cloudflare Pages. Todavía no existe sincronización entre dispositivos ni acceso privado mediante usuario.
+✅ Marca interna y PWA actualizadas a **Planorha**.
+
+✅ Código de sincronización con Cloudflare D1 y validación de Cloudflare Access incorporado.
+
+La aplicación continúa funcionando con almacenamiento local mientras D1 y Access no estén vinculados. Cuando se complete esa configuración, los datos se sincronizarán automáticamente entre dispositivos autenticados con el mismo correo.
 
 ## Funciones incluidas
 
@@ -21,17 +25,19 @@ La primera versión incluye persistencia local en el navegador y está preparada
 - Exportación e importación de datos en JSON.
 - Diseño adaptable a computadora y celular.
 - Manifiesto, Service Worker e íconos preparados para PWA.
+- Sincronización progresiva con respaldo local y reintento al recuperar internet.
 
 ## Tecnología
 
 - HTML, CSS y JavaScript sin dependencias externas.
-- Almacenamiento inicial mediante `localStorage`.
-- Aplicación estática compatible con Cloudflare Pages.
-- Base preparada para incorporar Cloudflare D1 y Pages Functions/Workers.
+- Cloudflare Pages y Pages Functions.
+- Almacenamiento local mediante `localStorage`.
+- Persistencia central preparada para Cloudflare D1.
+- Validación del JWT de Cloudflare Access mediante Web Crypto.
 
 ## Despliegue en Cloudflare Pages
 
-Crear el proyecto con el nombre `planora`, conectar este repositorio y usar:
+El proyecto publicado usa:
 
 - Production branch: `main`
 - Framework preset: `None`
@@ -39,7 +45,17 @@ Crear el proyecto con el nombre `planora`, conectar este repositorio y usar:
 - Build output directory: `.`
 - Root directory: dejar vacío
 
-La URL esperada será `planora.pages.dev` siempre que ese nombre esté disponible en Cloudflare.
+## Activar sincronización
+
+Seguir la guía [docs/CLOUDFLARE_SYNC_SETUP.md](docs/CLOUDFLARE_SYNC_SETUP.md).
+
+Resumen de recursos esperados:
+
+- Base D1: `planorha-db`
+- Binding D1: `DB`
+- Variable: `ACCESS_TEAM_DOMAIN`
+- Variable: `ACCESS_AUD`
+- Aplicación Cloudflare Access para `planorha.pages.dev`
 
 ## Roadmap
 
@@ -48,6 +64,6 @@ La URL esperada será `planora.pages.dev` siempre que ese nombre esté disponibl
 3. [Tareas recurrentes, recordatorios y mejoras](https://github.com/gnaEMV90/organizador-personal/issues/3)
 4. [Cierre PWA para iPhone y Android](https://github.com/gnaEMV90/organizador-personal/issues/4)
 
-## Importante sobre los datos
+## Respaldo de datos
 
-Hasta completar el hito de D1, cada navegador mantiene su propia información. Antes de borrar datos del navegador o cambiar de dispositivo conviene usar **Ajustes → Exportar datos**.
+Mientras la sincronización no esté activada, cada navegador mantiene su propia información. Antes de borrar datos del navegador o cambiar de dispositivo conviene usar **Ajustes → Exportar datos**.
