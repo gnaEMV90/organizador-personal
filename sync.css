@@ -1,0 +1,22 @@
+.storage-status[data-status="connecting"] i,
+.storage-status[data-status="saving"] i {
+  background: #d9b36f;
+  box-shadow: 0 0 0 4px rgba(217, 179, 111, .12);
+}
+
+.storage-status[data-status="synced"] i,
+.storage-status[data-status="local"] i {
+  background: #8fc5a9;
+  box-shadow: 0 0 0 4px rgba(143, 197, 169, .12);
+}
+
+.storage-status[data-status="offline"] i,
+.storage-status[data-status="unavailable"] i {
+  background: #b7b2a8;
+  box-shadow: 0 0 0 4px rgba(183, 178, 168, .12);
+}
+
+.storage-status[data-status="error"] i {
+  background: #d37d73;
+  box-shadow: 0 0 0 4px rgba(211, 125, 115, .12);
+}
