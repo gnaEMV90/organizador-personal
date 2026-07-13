@@ -42,9 +42,17 @@ async function validateAccessJwt(request, env) {
   if (header.alg !== 'RS256' || !header.kid) return null;
 
   const now = Math.floor(Date.now() / 1000);
+  const expiresAt = Number(payload.exp);
+  const notBefore = Number(payload.nbf || 0);
   const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
   const expectedIssuer = `https://${teamDomain}`;
-  if (!audience.includes(expectedAudience) || payload.exp <= now || payload.iss !== expectedIssuer) return null;
+  if (
+    !audience.includes(expectedAudience) ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= now ||
+    notBefore > now ||
+    payload.iss !== expectedIssuer
+  ) return null;
 
   const certResponse = await fetch(`${expectedIssuer}/cdn-cgi/access/certs`, {
     headers: { Accept: 'application/json' },
