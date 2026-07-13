@@ -1,0 +1,44 @@
+name: Construir MVP inicial
+
+on:
+  push:
+    paths:
+      - .github/workflows/bootstrap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generar aplicación
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f index.html ]; then
+            echo "La aplicación ya fue generada."
+            exit 0
+          fi
+          cat .bootstrap/payload-* | base64 --decode > /tmp/organizador.tar.gz
+          tar -xzf /tmp/organizador.tar.gz -C .
+          rm -rf .bootstrap
+
+      - name: Publicar archivos generados
+        shell: bash
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No hay cambios para publicar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Agregar MVP funcional del organizador personal"
+          git push
