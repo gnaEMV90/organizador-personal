@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#20352f" />
-  <meta name="description" content="Planora: tareas, calendario, listas y compras en un solo lugar." />
+  <meta name="description" content="Planorha: tareas, calendario, listas y compras en un solo lugar." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Planora" />
+  <meta name="apple-mobile-web-app-title" content="Planorha" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/styles.css" />
-  <title>Planora</title>
+  <title>Planorha</title>
 </head>
 <body>
   <div class="app-shell">
@@ -20,7 +20,7 @@
       <a class="brand" href="#hoy" aria-label="Ir al inicio">
         <span class="brand-mark" aria-hidden="true">P</span>
         <span>
-          <strong>Planora</strong>
+          <strong>Planorha</strong>
           <small>Tu día, en orden</small>
         </span>
       </a>
@@ -35,8 +35,8 @@
       </nav>
 
       <div class="sidebar-footer">
-        <p>Los datos se guardan en este dispositivo.</p>
-        <span class="storage-status"><i></i> Guardado automático</span>
+        <p>Los datos se guardan automáticamente.</p>
+        <span class="storage-status" id="sync-status" data-status="connecting"><i></i> Conectando…</span>
       </div>
     </aside>
 
@@ -128,6 +128,6 @@
   <input id="import-input" type="file" accept="application/json,.json" hidden />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="/app.js" defer></script>
+  <script src="/bootstrap.js" defer></script>
 </body>
 </html>
