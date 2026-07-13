@@ -1,4 +1,6 @@
-# Organizador Personal
+# Planora
+
+**Tu día, en orden.**
 
 Aplicación web personalizable para centralizar tareas, calendario, listas de compras y categorías.
 
@@ -29,13 +31,15 @@ La primera versión incluye persistencia local en el navegador y está preparada
 
 ## Despliegue en Cloudflare Pages
 
-Conectar este repositorio y usar:
+Crear el proyecto con el nombre `planora`, conectar este repositorio y usar:
 
 - Production branch: `main`
 - Framework preset: `None`
 - Build command: `exit 0`
 - Build output directory: `.`
 - Root directory: dejar vacío
+
+La URL esperada será `planora.pages.dev` siempre que ese nombre esté disponible en Cloudflare.
 
 ## Roadmap
 
