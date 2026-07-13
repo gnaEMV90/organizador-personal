@@ -5,14 +5,14 @@
   const SYNC_META_KEY = 'planorha.sync.v1';
   const API_URL = '/api/state';
   const SAVE_DELAY_MS = 650;
+  const nativeSetItem = Storage.prototype.setItem;
 
   const sync = {
     enabled: false,
     status: 'local',
     user: null,
     updatedAt: null,
-    timer: null,
-    originalSetItem: localStorage.setItem.bind(localStorage)
+    timer: null
   };
 
   function isValidState(value) {
@@ -24,29 +24,50 @@
     );
   }
 
-  function readLocalState() {
+  function readJson(key) {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return isValidState(parsed) ? parsed : null;
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
     } catch (error) {
-      console.warn('Planorha: no se pudo leer el estado local.', error);
+      console.warn(`Planorha: no se pudo leer ${key}.`, error);
       return null;
     }
   }
 
-  function writeLocalState(value) {
-    sync.originalSetItem(STORAGE_KEY, JSON.stringify(value));
+  function readLocalState() {
+    const parsed = readJson(STORAGE_KEY);
+    return isValidState(parsed) ? parsed : null;
   }
 
-  function setSyncMeta(meta) {
+  function readSyncMeta() {
+    return readJson(SYNC_META_KEY) || {};
+  }
+
+  function writeRaw(key, value) {
+    nativeSetItem.call(localStorage, key, value);
+  }
+
+  function writeLocalState(value) {
+    writeRaw(STORAGE_KEY, JSON.stringify(value));
+  }
+
+  function setSyncMeta(meta, dirty = false) {
     sync.updatedAt = meta.updatedAt || null;
-    sync.user = meta.user || null;
-    sync.originalSetItem(SYNC_META_KEY, JSON.stringify({
+    sync.user = meta.user || sync.user || null;
+    writeRaw(SYNC_META_KEY, JSON.stringify({
       updatedAt: sync.updatedAt,
       user: sync.user,
+      dirty,
       savedAt: new Date().toISOString()
+    }));
+  }
+
+  function markLocalChangesPending() {
+    const meta = readSyncMeta();
+    writeRaw(SYNC_META_KEY, JSON.stringify({
+      ...meta,
+      dirty: true,
+      changedAt: new Date().toISOString()
     }));
   }
 
@@ -77,10 +98,7 @@
       headers: { Accept: 'application/json' }
     });
 
-    if (response.status === 401 || response.status === 403 || response.status === 503 || response.status === 404) {
-      return { available: false };
-    }
-
+    if ([401, 403, 404, 503].includes(response.status)) return { available: false };
     if (!response.ok) throw new Error(`GET ${API_URL}: ${response.status}`);
     return { available: true, ...(await response.json()) };
   }
@@ -108,12 +126,14 @@
     }
 
     const payload = await response.json();
-    setSyncMeta(payload);
+    setSyncMeta(payload, false);
     updateStatus('synced');
   }
 
   function scheduleRemoteSave(rawValue) {
+    markLocalChangesPending();
     if (!sync.enabled) return;
+
     clearTimeout(sync.timer);
     sync.timer = setTimeout(async () => {
       try {
@@ -127,9 +147,9 @@
   }
 
   function installStorageBridge() {
-    localStorage.setItem = function patchedSetItem(key, value) {
-      sync.originalSetItem(key, value);
-      if (key === STORAGE_KEY) scheduleRemoteSave(value);
+    Storage.prototype.setItem = function patchedSetItem(key, value) {
+      nativeSetItem.call(this, key, value);
+      if (this === localStorage && key === STORAGE_KEY) scheduleRemoteSave(value);
     };
   }
 
@@ -173,6 +193,7 @@
   async function initialize() {
     updateStatus('connecting');
     const localState = readLocalState();
+    const localMeta = readSyncMeta();
 
     try {
       const remote = await fetchRemoteState();
@@ -182,16 +203,42 @@
       }
 
       sync.enabled = true;
-      setSyncMeta(remote);
+      sync.user = remote.user || null;
+      sync.updatedAt = remote.updatedAt || null;
 
-      if (localState) {
-        await pushRemoteState(localState);
-      } else if (isValidState(remote.state)) {
-        writeLocalState(remote.state);
+      if (!isValidState(remote.state)) {
+        if (localState) await pushRemoteState(localState);
+        else setSyncMeta(remote, false);
         updateStatus('synced');
-      } else {
-        updateStatus('synced');
+        return;
       }
+
+      if (!localState) {
+        writeLocalState(remote.state);
+        setSyncMeta(remote, false);
+        updateStatus('synced');
+        return;
+      }
+
+      if (localMeta.dirty && localMeta.updatedAt === remote.updatedAt) {
+        await pushRemoteState(localState);
+        return;
+      }
+
+      if (localMeta.updatedAt && localMeta.updatedAt !== remote.updatedAt) {
+        writeLocalState(remote.state);
+        setSyncMeta(remote, false);
+        updateStatus('synced');
+        return;
+      }
+
+      if (!localMeta.updatedAt) {
+        await pushRemoteState(localState);
+        return;
+      }
+
+      setSyncMeta(remote, false);
+      updateStatus('synced');
     } catch (error) {
       console.warn('Planorha: la sincronización no está disponible.', error);
       updateStatus(navigator.onLine ? 'error' : 'offline');
@@ -201,7 +248,9 @@
   window.addEventListener('online', () => {
     if (sync.enabled) {
       const current = readLocalState();
-      if (current) pushRemoteState(current).catch(() => updateStatus('error'));
+      const meta = readSyncMeta();
+      if (current && meta.dirty) pushRemoteState(current).catch(() => updateStatus('error'));
+      else updateStatus('synced');
     } else {
       updateStatus('local');
     }
