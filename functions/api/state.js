@@ -23,13 +23,13 @@ function normalizeDomain(value) {
   return String(value || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
+function hasRequiredConfiguration(env) {
+  return Boolean(env.DB && env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD);
+}
+
 async function validateAccessJwt(request, env) {
   const teamDomain = normalizeDomain(env.ACCESS_TEAM_DOMAIN);
   const expectedAudience = String(env.ACCESS_AUD || '').trim();
-  if (!teamDomain || !expectedAudience) {
-    throw new Error('Access no configurado');
-  }
-
   const assertion = request.headers.get('Cf-Access-Jwt-Assertion');
   if (!assertion) return null;
 
@@ -102,7 +102,7 @@ async function ensureSchema(db) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  if (!env.DB) return json({ error: 'D1 no configurado' }, 503);
+  if (!hasRequiredConfiguration(env)) return json({ error: 'Sincronización no configurada' }, 503);
 
   try {
     const userId = await validateAccessJwt(request, env);
@@ -126,7 +126,7 @@ export async function onRequestGet(context) {
 
 export async function onRequestPut(context) {
   const { request, env } = context;
-  if (!env.DB) return json({ error: 'D1 no configurado' }, 503);
+  if (!hasRequiredConfiguration(env)) return json({ error: 'Sincronización no configurada' }, 503);
 
   try {
     const userId = await validateAccessJwt(request, env);
