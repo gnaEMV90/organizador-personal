@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#20352f" />
+  <meta name="description" content="Organizador personal para tareas, calendario, listas y compras." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Mi Organizador" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+  <title>Mi Organizador</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <a class="brand" href="#hoy" aria-label="Ir al inicio">
+        <span class="brand-mark" aria-hidden="true">O</span>
+        <span>
+          <strong>Mi Organizador</strong>
+          <small>Todo en un solo lugar</small>
+        </span>
+      </a>
+
+      <nav class="nav-list">
+        <button class="nav-item is-active" data-view="hoy"><span>Hoy</span><kbd>1</kbd></button>
+        <button class="nav-item" data-view="calendario"><span>Calendario</span><kbd>2</kbd></button>
+        <button class="nav-item" data-view="tareas"><span>Tareas</span><kbd>3</kbd></button>
+        <button class="nav-item" data-view="listas"><span>Listas</span><kbd>4</kbd></button>
+        <button class="nav-item" data-view="categorias"><span>Categorías</span><kbd>5</kbd></button>
+        <button class="nav-item" data-view="ajustes"><span>Ajustes</span><kbd>6</kbd></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p>Los datos se guardan en este dispositivo.</p>
+        <span class="storage-status"><i></i> Guardado automático</span>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="today-label"></p>
+          <h1 id="view-title">Hoy</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="button button-ghost" id="install-button" hidden>Instalar app</button>
+          <button class="button button-primary" id="quick-add-button">+ Agregar</button>
+        </div>
+      </header>
+
+      <main id="app-content" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Navegación móvil">
+    <button class="mobile-nav-item is-active" data-view="hoy"><span>Inicio</span></button>
+    <button class="mobile-nav-item" data-view="calendario"><span>Calendario</span></button>
+    <button class="mobile-add" id="mobile-add-button" aria-label="Agregar elemento">+</button>
+    <button class="mobile-nav-item" data-view="tareas"><span>Tareas</span></button>
+    <button class="mobile-nav-item" data-view="listas"><span>Listas</span></button>
+  </nav>
+
+  <dialog id="action-dialog" class="dialog compact-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Nuevo elemento</p>
+        <h2>¿Qué querés agregar?</h2>
+      </div>
+      <button class="icon-button" data-close-dialog aria-label="Cerrar">×</button>
+    </div>
+    <div class="quick-actions">
+      <button data-open-form="task"><strong>Tarea</strong><span>Con fecha, prioridad y categoría</span></button>
+      <button data-open-form="list"><strong>Lista</strong><span>Compras, pendientes o cualquier idea</span></button>
+      <button data-open-form="category"><strong>Categoría</strong><span>Personalizá tu organización</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="task-dialog" class="dialog">
+    <form id="task-form" method="dialog">
+      <div class="dialog-header">
+        <div><p class="eyebrow">Tareas</p><h2 id="task-dialog-title">Nueva tarea</h2></div>
+        <button type="button" class="icon-button" data-close-dialog aria-label="Cerrar">×</button>
+      </div>
+      <input type="hidden" name="id" />
+      <label class="field field-wide">Título<input name="title" maxlength="120" required placeholder="Ej.: Pedir turno al dentista" /></label>
+      <label class="field field-wide">Notas<textarea name="notes" rows="3" maxlength="500" placeholder="Información adicional"></textarea></label>
+      <div class="form-grid">
+        <label class="field">Fecha<input name="date" type="date" /></label>
+        <label class="field">Hora<input name="time" type="time" /></label>
+        <label class="field">Prioridad<select name="priority"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option></select></label>
+        <label class="field">Categoría<select name="category"></select></label>
+      </div>
+      <div class="dialog-actions"><button type="button" class="button button-ghost" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar tarea</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="list-dialog" class="dialog">
+    <form id="list-form" method="dialog">
+      <div class="dialog-header">
+        <div><p class="eyebrow">Listas</p><h2 id="list-dialog-title">Nueva lista</h2></div>
+        <button type="button" class="icon-button" data-close-dialog aria-label="Cerrar">×</button>
+      </div>
+      <input type="hidden" name="id" />
+      <label class="field field-wide">Nombre<input name="title" maxlength="80" required placeholder="Ej.: Compras del supermercado" /></label>
+      <label class="field field-wide">Descripción<textarea name="notes" rows="3" maxlength="300" placeholder="Opcional"></textarea></label>
+      <label class="field field-wide">Categoría<select name="category"></select></label>
+      <div class="dialog-actions"><button type="button" class="button button-ghost" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar lista</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="category-dialog" class="dialog compact-dialog">
+    <form id="category-form" method="dialog">
+      <div class="dialog-header">
+        <div><p class="eyebrow">Categorías</p><h2 id="category-dialog-title">Nueva categoría</h2></div>
+        <button type="button" class="icon-button" data-close-dialog aria-label="Cerrar">×</button>
+      </div>
+      <input type="hidden" name="id" />
+      <label class="field field-wide">Nombre<input name="name" maxlength="40" required placeholder="Ej.: Familia" /></label>
+      <label class="field field-wide">Color<input name="color" type="color" value="#5c7c70" /></label>
+      <div class="dialog-actions"><button type="button" class="button button-ghost" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar categoría</button></div>
+    </form>
+  </dialog>
+
+  <input id="import-input" type="file" accept="application/json,.json" hidden />
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

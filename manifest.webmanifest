@@ -1,0 +1,15 @@
+{
+  "name": "Mi Organizador Personal",
+  "short_name": "Organizador",
+  "description": "Tareas, calendario, listas y compras en un solo lugar.",
+  "lang": "es-AR",
+  "start_url": "/#hoy",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f2eb",
+  "theme_color": "#20352f",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
