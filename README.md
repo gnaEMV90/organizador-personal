@@ -2,36 +2,48 @@
 
 Aplicación web personalizable para centralizar tareas, calendario, listas de compras y categorías.
 
-## Estado
+## Estado actual
 
-MVP web en desarrollo.
+✅ MVP web funcional cargado en `main`.
 
-## Módulos incluidos
+La primera versión incluye persistencia local en el navegador y está preparada para publicarse como sitio estático en Cloudflare Pages. Todavía no existe sincronización entre dispositivos ni acceso privado mediante usuario.
 
-- Panel **Hoy** con pendientes, vencidas y próximas tareas.
-- **Calendario** mensual.
-- **Tareas** con prioridad, estado, fecha, hora y categoría.
-- **Listas** personalizables con ítems marcables.
-- **Categorías** creadas por el usuario.
-- Exportación e importación de datos.
-- Base PWA para instalar en iPhone, iPad y Android.
+## Funciones incluidas
+
+- Panel **Hoy** con tareas del día, vencidas, próximas y resumen de listas.
+- **Calendario** mensual con tareas por fecha.
+- **Tareas** con título, notas, fecha, hora, prioridad, categoría y estado.
+- Búsqueda y filtros por estado y categoría.
+- **Listas** personalizables con cantidades e ítems marcables.
+- **Categorías** creadas, editadas y eliminadas por el usuario.
+- Exportación e importación de datos en JSON.
+- Diseño adaptable a computadora y celular.
+- Manifiesto, Service Worker e íconos preparados para PWA.
 
 ## Tecnología
 
-Aplicación estática sin dependencias externas, preparada para Cloudflare Pages. En esta primera etapa los datos se guardan en `localStorage` dentro del navegador.
+- HTML, CSS y JavaScript sin dependencias externas.
+- Almacenamiento inicial mediante `localStorage`.
+- Aplicación estática compatible con Cloudflare Pages.
+- Base preparada para incorporar Cloudflare D1 y Pages Functions/Workers.
 
 ## Despliegue en Cloudflare Pages
 
+Conectar este repositorio y usar:
+
+- Production branch: `main`
 - Framework preset: `None`
 - Build command: dejar vacío
 - Build output directory: `/`
 - Root directory: `/`
 
-## Próximos hitos
+## Roadmap
 
-1. Publicación inicial en Cloudflare Pages.
-2. Pruebas funcionales y mejoras de experiencia.
-3. Persistencia y sincronización con Cloudflare D1.
-4. Acceso privado.
-5. Notificaciones y tareas recurrentes.
-6. Instalación como PWA en iPhone y Android.
+1. [Publicar MVP en Cloudflare Pages](https://github.com/gnaEMV90/organizador-personal/issues/1)
+2. [Sincronización con Cloudflare D1 y acceso privado](https://github.com/gnaEMV90/organizador-personal/issues/2)
+3. [Tareas recurrentes, recordatorios y mejoras](https://github.com/gnaEMV90/organizador-personal/issues/3)
+4. [Cierre PWA para iPhone y Android](https://github.com/gnaEMV90/organizador-personal/issues/4)
+
+## Importante sobre los datos
+
+Hasta completar el hito de D1, cada navegador mantiene su propia información. Antes de borrar datos del navegador o cambiar de dispositivo conviene usar **Ajustes → Exportar datos**.
