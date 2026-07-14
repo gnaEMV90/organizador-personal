@@ -2,9 +2,10 @@
   'use strict';
 
   const STORAGE_KEY = 'organizadorPersonal.v1';
-  const SYNC_META_KEY = 'planorha.sync.v1';
+  const SYNC_META_KEY = 'planorha.sync.v2';
   const API_URL = '/api/state';
   const SAVE_DELAY_MS = 650;
+  const POLL_INTERVAL_MS = 15000;
   const nativeSetItem = Storage.prototype.setItem;
 
   const sync = {
@@ -12,7 +13,10 @@
     status: 'local',
     user: null,
     updatedAt: null,
-    timer: null
+    timer: null,
+    pollTimer: null,
+    refreshing: false,
+    appLoaded: false
   };
 
   function isValidState(value) {
@@ -51,6 +55,81 @@
     writeRaw(STORAGE_KEY, JSON.stringify(value));
   }
 
+  function statesEqual(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function normalizedText(value) {
+    return String(value || '').trim().toLocaleLowerCase('es-AR');
+  }
+
+  function mergeById(remoteItems = [], localItems = []) {
+    const merged = new Map();
+    remoteItems.forEach(item => {
+      if (item?.id) merged.set(item.id, item);
+    });
+    localItems.forEach(item => {
+      if (item?.id) merged.set(item.id, item);
+    });
+    return [...merged.values()];
+  }
+
+  function mergeListItems(remoteItems = [], localItems = []) {
+    return mergeById(remoteItems, localItems);
+  }
+
+  function listSemanticKey(list) {
+    return [normalizedText(list?.title), normalizedText(list?.categoryId), normalizedText(list?.notes)].join('|');
+  }
+
+  function mergeLists(remoteLists = [], localLists = []) {
+    const result = remoteLists.map(list => ({ ...list, items: Array.isArray(list.items) ? [...list.items] : [] }));
+    const byId = new Map(result.filter(list => list?.id).map((list, index) => [list.id, index]));
+    const bySemanticKey = new Map(result.map((list, index) => [listSemanticKey(list), index]));
+
+    localLists.forEach(localList => {
+      if (!localList?.id) return;
+      const semanticKey = listSemanticKey(localList);
+      const existingIndex = byId.has(localList.id)
+        ? byId.get(localList.id)
+        : bySemanticKey.get(semanticKey);
+
+      if (existingIndex === undefined) {
+        const next = { ...localList, items: Array.isArray(localList.items) ? [...localList.items] : [] };
+        result.push(next);
+        const index = result.length - 1;
+        byId.set(next.id, index);
+        bySemanticKey.set(semanticKey, index);
+        return;
+      }
+
+      const remoteList = result[existingIndex];
+      result[existingIndex] = {
+        ...remoteList,
+        ...localList,
+        id: remoteList.id || localList.id,
+        items: mergeListItems(remoteList.items, localList.items)
+      };
+      byId.set(localList.id, existingIndex);
+    });
+
+    return result;
+  }
+
+  function mergeStates(remoteState, localState) {
+    if (!isValidState(remoteState)) return localState;
+    if (!isValidState(localState)) return remoteState;
+
+    return {
+      ...remoteState,
+      ...localState,
+      version: Math.max(Number(remoteState.version) || 1, Number(localState.version) || 1),
+      categories: mergeById(remoteState.categories, localState.categories),
+      tasks: mergeById(remoteState.tasks, localState.tasks),
+      lists: mergeLists(remoteState.lists, localState.lists)
+    };
+  }
+
   function setSyncMeta(meta, dirty = false) {
     sync.updatedAt = meta.updatedAt || null;
     sync.user = meta.user || sync.user || null;
@@ -66,6 +145,7 @@
     const meta = readSyncMeta();
     writeRaw(SYNC_META_KEY, JSON.stringify({
       ...meta,
+      user: sync.user || meta.user || null,
       dirty: true,
       changedAt: new Date().toISOString()
     }));
@@ -103,12 +183,7 @@
     return { available: true, ...(await response.json()) };
   }
 
-  async function pushRemoteState(state) {
-    if (!sync.enabled || !isValidState(state)) return;
-
-    updateStatus(navigator.onLine ? 'saving' : 'offline');
-    if (!navigator.onLine) return;
-
+  async function putRemoteState(state) {
     const response = await fetch(API_URL, {
       method: 'PUT',
       credentials: 'include',
@@ -120,14 +195,44 @@
       if ([401, 403, 503].includes(response.status)) {
         sync.enabled = false;
         updateStatus('unavailable');
-        return;
+        return null;
       }
       throw new Error(`PUT ${API_URL}: ${response.status}`);
     }
 
-    const payload = await response.json();
+    return response.json();
+  }
+
+  function reloadForRemoteChanges() {
+    if (!sync.appLoaded) return;
+    setTimeout(() => location.reload(), 80);
+  }
+
+  async function pushRemoteState(localState, { mergeRemote = true } = {}) {
+    if (!sync.enabled || !isValidState(localState)) return;
+
+    updateStatus(navigator.onLine ? 'saving' : 'offline');
+    if (!navigator.onLine) return;
+
+    let stateToSave = localState;
+
+    if (mergeRemote) {
+      const remoteBeforeSave = await fetchRemoteState();
+      if (remoteBeforeSave.available && isValidState(remoteBeforeSave.state)) {
+        stateToSave = mergeStates(remoteBeforeSave.state, localState);
+      }
+    }
+
+    const localChangedByMerge = !statesEqual(stateToSave, localState);
+    if (localChangedByMerge) writeLocalState(stateToSave);
+
+    const payload = await putRemoteState(stateToSave);
+    if (!payload) return;
+
     setSyncMeta(payload, false);
     updateStatus('synced');
+
+    if (localChangedByMerge) reloadForRemoteChanges();
   }
 
   function scheduleRemoteSave(rawValue) {
@@ -138,7 +243,7 @@
     sync.timer = setTimeout(async () => {
       try {
         const parsed = JSON.parse(rawValue);
-        await pushRemoteState(parsed);
+        await pushRemoteState(parsed, { mergeRemote: true });
       } catch (error) {
         console.warn('Planorha: no se pudieron sincronizar los cambios.', error);
         updateStatus(navigator.onLine ? 'error' : 'offline');
@@ -155,9 +260,10 @@
 
   function loadApplication() {
     const script = document.createElement('script');
-    script.src = '/app.js';
+    script.src = '/app.js?v=3';
     script.defer = true;
     script.onerror = () => updateStatus('error');
+    script.onload = () => { sync.appLoaded = true; };
     document.body.appendChild(script);
   }
 
@@ -207,36 +313,37 @@
       sync.updatedAt = remote.updatedAt || null;
 
       if (!isValidState(remote.state)) {
-        if (localState) await pushRemoteState(localState);
+        if (localState) await pushRemoteState(localState, { mergeRemote: false });
         else setSyncMeta(remote, false);
         updateStatus('synced');
         return;
       }
 
-      if (!localState) {
+      const belongsToAnotherUser = localMeta.user && remote.user && localMeta.user !== remote.user;
+      if (!localState || belongsToAnotherUser) {
         writeLocalState(remote.state);
         setSyncMeta(remote, false);
         updateStatus('synced');
         return;
       }
 
-      if (localMeta.dirty && localMeta.updatedAt === remote.updatedAt) {
-        await pushRemoteState(localState);
-        return;
-      }
-
-      if (localMeta.updatedAt && localMeta.updatedAt !== remote.updatedAt) {
-        writeLocalState(remote.state);
-        setSyncMeta(remote, false);
-        updateStatus('synced');
+      if (localMeta.dirty) {
+        const merged = mergeStates(remote.state, localState);
+        writeLocalState(merged);
+        await pushRemoteState(merged, { mergeRemote: false });
         return;
       }
 
       if (!localMeta.updatedAt) {
-        await pushRemoteState(localState);
+        const merged = mergeStates(remote.state, localState);
+        writeLocalState(merged);
+        if (!statesEqual(merged, remote.state)) await pushRemoteState(merged, { mergeRemote: false });
+        else setSyncMeta(remote, false);
+        updateStatus('synced');
         return;
       }
 
+      writeLocalState(remote.state);
       setSyncMeta(remote, false);
       updateStatus('synced');
     } catch (error) {
@@ -245,20 +352,57 @@
     }
   }
 
+  async function refreshFromRemote() {
+    if (!sync.enabled || sync.refreshing || !navigator.onLine) return;
+    const meta = readSyncMeta();
+    if (meta.dirty) return;
+
+    sync.refreshing = true;
+    try {
+      const remote = await fetchRemoteState();
+      if (!remote.available || !isValidState(remote.state)) return;
+
+      const localState = readLocalState();
+      const changed = !statesEqual(localState, remote.state);
+      writeLocalState(remote.state);
+      setSyncMeta(remote, false);
+      updateStatus('synced');
+
+      if (changed) reloadForRemoteChanges();
+    } catch (error) {
+      console.warn('Planorha: no se pudo actualizar desde D1.', error);
+      updateStatus(navigator.onLine ? 'error' : 'offline');
+    } finally {
+      sync.refreshing = false;
+    }
+  }
+
+  function startPolling() {
+    clearInterval(sync.pollTimer);
+    sync.pollTimer = setInterval(refreshFromRemote, POLL_INTERVAL_MS);
+  }
+
   window.addEventListener('online', () => {
     if (sync.enabled) {
       const current = readLocalState();
       const meta = readSyncMeta();
-      if (current && meta.dirty) pushRemoteState(current).catch(() => updateStatus('error'));
-      else updateStatus('synced');
+      if (current && meta.dirty) pushRemoteState(current, { mergeRemote: true }).catch(() => updateStatus('error'));
+      else refreshFromRemote();
     } else {
       updateStatus('local');
     }
   });
   window.addEventListener('offline', () => updateStatus('offline'));
+  window.addEventListener('focus', refreshFromRemote);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshFromRemote();
+  });
 
   window.PlanorhaSync = sync;
   installStorageBridge();
   applyBrandAndSettingsPatches();
-  initialize().finally(loadApplication);
+  initialize().finally(() => {
+    loadApplication();
+    startPolling();
+  });
 })();
