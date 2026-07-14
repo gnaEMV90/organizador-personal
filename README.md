@@ -8,11 +8,11 @@ Aplicación web personalizable para centralizar tareas, calendario, listas de co
 
 ✅ MVP publicado en `https://planorha.pages.dev`.
 
-✅ Marca interna y PWA actualizadas a **Planorha**.
+✅ Acceso privado activo mediante Cloudflare Access.
 
-✅ Código de sincronización con Cloudflare D1 y validación de Cloudflare Access incorporado.
+✅ Persistencia central activa en Cloudflare D1, separada por correo autenticado.
 
-La aplicación continúa funcionando con almacenamiento local mientras D1 y Access no estén vinculados. Cuando se complete esa configuración, los datos se sincronizarán automáticamente entre dispositivos autenticados con el mismo correo.
+✅ Sincronización operativa entre computadora y celular, con respaldo local y funcionamiento sin conexión.
 
 ## Funciones incluidas
 
@@ -25,15 +25,30 @@ La aplicación continúa funcionando con almacenamiento local mientras D1 y Acce
 - Exportación e importación de datos en JSON.
 - Diseño adaptable a computadora y celular.
 - Manifiesto, Service Worker e íconos preparados para PWA.
-- Sincronización progresiva con respaldo local y reintento al recuperar internet.
+- Sincronización automática al guardar, al recuperar conexión, al volver a la aplicación y mediante control manual.
+- Indicador visible de estado, cuenta conectada y hora de última sincronización.
+- Resolución de cambios concurrentes por elemento.
+- Registro de eliminaciones para impedir que tareas, listas o ítems borrados reaparezcan desde otro dispositivo.
+
+## Sincronización
+
+El estado se conserva localmente en cada navegador y se replica en D1 para la cuenta autenticada. El núcleo compartido de sincronización:
+
+- asigna una fecha de modificación a cada tarea, categoría, lista e ítem;
+- combina cambios realizados desde distintos dispositivos;
+- conserva marcadores de eliminación durante 180 días;
+- reintenta escrituras concurrentes sin sobrescribir silenciosamente el estado más reciente;
+- migra automáticamente las copias creadas con la primera versión del MVP.
+
+La aplicación consulta cambios remotos al recuperar el foco y periódicamente mientras permanece abierta.
 
 ## Tecnología
 
 - HTML, CSS y JavaScript sin dependencias externas.
 - Cloudflare Pages y Pages Functions.
 - Almacenamiento local mediante `localStorage`.
-- Persistencia central preparada para Cloudflare D1.
-- Validación del JWT de Cloudflare Access mediante Web Crypto.
+- Persistencia central mediante Cloudflare D1.
+- Protección de acceso y validación del JWT de Cloudflare Access mediante Web Crypto.
 
 ## Despliegue en Cloudflare Pages
 
@@ -47,11 +62,11 @@ El proyecto publicado usa:
 
 Los cambios de bindings o variables de entorno requieren un deployment nuevo para quedar activos. Los commits nuevos sobre `main` lo generan automáticamente.
 
-## Activar sincronización
+## Configuración de sincronización
 
-Seguir la guía [docs/CLOUDFLARE_SYNC_SETUP.md](docs/CLOUDFLARE_SYNC_SETUP.md).
+La guía técnica se encuentra en [docs/CLOUDFLARE_SYNC_SETUP.md](docs/CLOUDFLARE_SYNC_SETUP.md).
 
-Resumen de recursos esperados:
+Recursos configurados:
 
 - Base D1: `planorha-db`
 - Binding D1: `DB`
@@ -61,11 +76,11 @@ Resumen de recursos esperados:
 
 ## Roadmap
 
-1. [Publicar MVP en Cloudflare Pages](https://github.com/gnaEMV90/organizador-personal/issues/1)
-2. [Sincronización con Cloudflare D1 y acceso privado](https://github.com/gnaEMV90/organizador-personal/issues/2)
-3. [Tareas recurrentes, recordatorios y mejoras](https://github.com/gnaEMV90/organizador-personal/issues/3)
-4. [Cierre PWA para iPhone y Android](https://github.com/gnaEMV90/organizador-personal/issues/4)
+1. [Publicar MVP en Cloudflare Pages](https://github.com/gnaEMV90/organizador-personal/issues/1) — completado.
+2. [Sincronización con Cloudflare D1 y acceso privado](https://github.com/gnaEMV90/organizador-personal/issues/2) — completado.
+3. [Tareas recurrentes, recordatorios y mejoras](https://github.com/gnaEMV90/organizador-personal/issues/3).
+4. [Cierre PWA para iPhone y Android](https://github.com/gnaEMV90/organizador-personal/issues/4).
 
 ## Respaldo de datos
 
-Mientras la sincronización no esté activada, cada navegador mantiene su propia información. Antes de borrar datos del navegador o cambiar de dispositivo conviene usar **Ajustes → Exportar datos**.
+D1 es la copia central de la cuenta y cada dispositivo mantiene una copia local para continuar trabajando ante una pérdida temporal de conexión. La opción **Ajustes → Exportar datos** permite generar además un respaldo manual en JSON.
