@@ -20,3 +20,64 @@
   background: #d37d73;
   box-shadow: 0 0 0 4px rgba(211, 125, 115, .12);
 }
+
+.sync-panel {
+  display: grid;
+  gap: 7px;
+}
+
+.sync-panel .storage-status {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, .78);
+  font-weight: 700;
+}
+
+.sync-panel small {
+  display: block;
+  overflow: hidden;
+  color: rgba(255, 255, 255, .46);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-now-button {
+  width: max-content;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 9px;
+  padding: 7px 10px;
+  color: rgba(255, 255, 255, .76);
+  background: rgba(255, 255, 255, .07);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.sync-now-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, .12);
+}
+
+.sync-now-button:disabled {
+  cursor: wait;
+  opacity: .48;
+}
+
+@media (max-width: 820px) {
+  .sync-now-button {
+    display: none;
+  }
+}
+
+.mobile-sync-chip {
+  display: none;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 820px) {
+  .mobile-sync-chip {
+    display: flex;
+  }
+}
