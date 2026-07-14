@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/sync.css" />
+  <link rel="stylesheet" href="/sync.css?v=4" />
   <title>Planorha</title>
 </head>
 <body>
@@ -37,7 +37,11 @@
 
       <div class="sidebar-footer">
         <p>Los datos se guardan automáticamente.</p>
-        <span class="storage-status" id="sync-status" data-status="connecting"><i></i> Conectando…</span>
+        <div class="sync-panel" aria-live="polite">
+          <span class="storage-status js-sync-status" id="sync-status" data-status="connecting"><i></i> Conectando…</span>
+          <small id="sync-account">Comprobando cuenta…</small>
+          <button class="sync-now-button" id="sync-now-button" type="button" hidden>Sincronizar ahora</button>
+        </div>
       </div>
     </aside>
 
@@ -46,6 +50,7 @@
         <div>
           <p class="eyebrow" id="today-label"></p>
           <h1 id="view-title">Hoy</h1>
+          <span class="mobile-sync-chip storage-status js-sync-status" data-status="connecting"><i></i> Conectando…</span>
         </div>
         <div class="topbar-actions">
           <button class="button button-ghost" id="install-button" hidden>Instalar app</button>
@@ -129,6 +134,6 @@
   <input id="import-input" type="file" accept="application/json,.json" hidden />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="/bootstrap.js" defer></script>
+  <script type="module" src="/bootstrap.js?v=4"></script>
 </body>
 </html>
