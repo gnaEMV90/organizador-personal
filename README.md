@@ -45,6 +45,8 @@ El proyecto publicado usa:
 - Build output directory: `.`
 - Root directory: dejar vacío
 
+Los cambios de bindings o variables de entorno requieren un deployment nuevo para quedar activos. Los commits nuevos sobre `main` lo generan automáticamente.
+
 ## Activar sincronización
 
 Seguir la guía [docs/CLOUDFLARE_SYNC_SETUP.md](docs/CLOUDFLARE_SYNC_SETUP.md).
