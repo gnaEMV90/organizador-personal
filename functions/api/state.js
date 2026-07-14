@@ -1,8 +1,17 @@
+import {
+  EPOCH,
+  SYNC_SCHEMA_VERSION,
+  isValidState,
+  normalizeState,
+  mergeStates
+} from '../../sync-core.js';
+
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff'
 };
+const MAX_WRITE_ATTEMPTS = 5;
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), { status, headers: JSON_HEADERS });
@@ -81,15 +90,6 @@ async function validateAccessJwt(request, env) {
   return userId || null;
 }
 
-function isValidState(value) {
-  return Boolean(
-    value &&
-    Array.isArray(value.categories) &&
-    Array.isArray(value.tasks) &&
-    Array.isArray(value.lists)
-  );
-}
-
 async function ensureSchema(db) {
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS user_state (
@@ -98,6 +98,41 @@ async function ensureSchema(db) {
       updated_at TEXT NOT NULL
     )
   `).run();
+}
+
+async function readStateRow(db, userId) {
+  return db.prepare(
+    'SELECT state_json, updated_at FROM user_state WHERE user_id = ?1'
+  ).bind(userId).first();
+}
+
+async function mergeAndSaveState(db, userId, incomingState) {
+  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const row = await readStateRow(db, userId);
+    const currentState = row ? JSON.parse(row.state_json) : null;
+    const currentUsesSyncSchema = Number(currentState?._sync?.schemaVersion || 0) >= SYNC_SCHEMA_VERSION;
+    const incomingUsesSyncSchema = Number(incomingState?._sync?.schemaVersion || 0) >= SYNC_SCHEMA_VERSION;
+    const incomingFallback = currentUsesSyncSchema && !incomingUsesSyncSchema ? EPOCH : new Date().toISOString();
+    const mergedState = mergeStates(currentState, incomingState, row?.updated_at || EPOCH, incomingFallback);
+    const updatedAt = new Date(Date.now() + attempt).toISOString();
+    let result;
+
+    if (row) {
+      result = await db.prepare(`
+        UPDATE user_state
+        SET state_json = ?2, updated_at = ?3
+        WHERE user_id = ?1 AND updated_at = ?4
+      `).bind(userId, JSON.stringify(mergedState), updatedAt, row.updated_at).run();
+    } else {
+      result = await db.prepare(`
+        INSERT OR IGNORE INTO user_state (user_id, state_json, updated_at)
+        VALUES (?1, ?2, ?3)
+      `).bind(userId, JSON.stringify(mergedState), updatedAt).run();
+    }
+
+    if (Number(result?.meta?.changes || 0) === 1) return { state: mergedState, updatedAt };
+  }
+  throw new Error('No se pudo resolver el conflicto de sincronización después de varios intentos.');
 }
 
 export async function onRequestGet(context) {
@@ -109,12 +144,9 @@ export async function onRequestGet(context) {
     if (!userId) return json({ error: 'No autorizado' }, 401);
 
     await ensureSchema(env.DB);
-    const row = await env.DB.prepare(
-      'SELECT state_json, updated_at FROM user_state WHERE user_id = ?1'
-    ).bind(userId).first();
-
+    const row = await readStateRow(env.DB, userId);
     return json({
-      state: row ? JSON.parse(row.state_json) : null,
+      state: row ? normalizeState(JSON.parse(row.state_json), row.updated_at) : null,
       updatedAt: row?.updated_at || null,
       user: userId
     });
@@ -139,16 +171,8 @@ export async function onRequestPut(context) {
     if (!isValidState(body.state)) return json({ error: 'Estado inválido' }, 400);
 
     await ensureSchema(env.DB);
-    const updatedAt = new Date().toISOString();
-    await env.DB.prepare(`
-      INSERT INTO user_state (user_id, state_json, updated_at)
-      VALUES (?1, ?2, ?3)
-      ON CONFLICT(user_id) DO UPDATE SET
-        state_json = excluded.state_json,
-        updated_at = excluded.updated_at
-    `).bind(userId, JSON.stringify(body.state), updatedAt).run();
-
-    return json({ updatedAt, user: userId });
+    const saved = await mergeAndSaveState(env.DB, userId, body.state);
+    return json({ state: saved.state, updatedAt: saved.updatedAt, user: userId });
   } catch (error) {
     console.error('Planorha PUT state:', error);
     return json({ error: 'No se pudo guardar la información' }, 500);
