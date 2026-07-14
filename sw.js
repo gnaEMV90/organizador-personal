@@ -1,5 +1,17 @@
-const CACHE_NAME = 'planorha-v3';
-const APP_SHELL = ['/', '/index.html', '/styles.css', '/sync.css', '/bootstrap.js?v=3', '/app.js?v=3', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE_NAME = 'planorha-v4';
+const APP_SHELL = [
+  '/',
+  '/index.html',
+  '/styles.css',
+  '/sync.css?v=4',
+  '/bootstrap.js?v=4',
+  '/sync-core.js?v=4',
+  '/app.js?v=4',
+  '/manifest.webmanifest',
+  '/icons/icon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
