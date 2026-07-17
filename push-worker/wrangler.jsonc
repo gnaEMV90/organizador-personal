@@ -7,7 +7,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "vars": {
-    "VAPID_PUBLIC_KEY": "BFBJYfmsYkFK3tHETq7VS8ivgrLyP0M_33TxpOjDTADiQpHzScgw_nTQrxKTbdZbU9QWe2lY3Fhkp70cesjoQ-g",
+    "VAPID_PUBLIC_KEY": "BBE6XjGoS7CvkwXtrDBqxAOJhbWf9FwEbPYqban5zor__rFALZw2QvmVe3SGlp5eZ5zHBFxaaWIZRWFWoJQta0g",
     "VAPID_SUBJECT": "mailto:german.andrighetti@gmail.com"
   },
   "triggers": {
