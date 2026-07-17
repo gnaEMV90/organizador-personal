@@ -1,10 +1,12 @@
-const CACHE_NAME = 'planorha-v6';
+const CACHE_NAME = 'planorha-v7';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/styles.css',
   '/sync.css?v=4',
   '/productivity.css?v=5',
+  '/push-client.js?v=7',
+  '/push-ui.js?v=7',
   '/manual-order-addon.js?v=5',
   '/bootstrap.js?v=6',
   '/sync-core.js?v=4',
@@ -55,6 +57,30 @@ self.addEventListener('fetch', event => {
       return response;
     }))
   );
+});
+
+self.addEventListener('push', event => {
+  let payload = {};
+  try {
+    payload = event.data?.json() || {};
+  } catch {
+    payload = { body: event.data?.text() || '' };
+  }
+
+  const title = payload.title || 'Planorha';
+  const options = {
+    body: payload.body || 'Tenés un recordatorio pendiente.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: payload.tag || `planorha-push-${Date.now()}`,
+    renotify: false,
+    data: {
+      url: payload.url || '/#tareas',
+      taskId: payload.taskId || ''
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', event => {
