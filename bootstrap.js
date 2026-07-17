@@ -156,11 +156,13 @@ import {
     if (!payload) return;
 
     const serverState = isValidState(payload.state) ? normalizeState(payload.state, payload.updatedAt) : prepared;
-    const changed = !statesEqual(readLocalState(), serverState);
     writeLocalState(serverState);
     setSyncMeta(payload, false);
     updateStatus('synced');
-    if (changed) reloadForRemoteChanges();
+
+    // Un guardado iniciado en este dispositivo no debe recargar la página.
+    // La interfaz ya contiene el cambio local y el polling traerá cualquier
+    // combinación remota posterior sin entrar en un ciclo de recargas.
   }
 
   function scheduleRemoteSave(rawValue) {
@@ -186,6 +188,15 @@ import {
       try {
         const previous = readLocalState();
         const incoming = JSON.parse(value);
+
+        // app.js normaliza el estado al iniciar. Cuando esa normalización no
+        // cambia ningún dato, no debe marcar la cuenta como sucia ni volver a
+        // enviarla a D1 en cada carga.
+        if (previous && statesEqual(previous, incoming)) {
+          nativeSetItem.call(this, key, value);
+          return;
+        }
+
         const prepared = prepareStateForLocalSave(previous, incoming);
         const serialized = JSON.stringify(prepared);
         nativeSetItem.call(this, key, serialized);
