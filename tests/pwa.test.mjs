@@ -19,13 +19,18 @@ test('la página contempla áreas seguras y carga los recursos versionados', () 
   assert.match(index, /viewport-fit=cover/);
   assert.match(index, /manifest\.webmanifest\?v=5/);
   assert.match(index, /productivity\.css\?v=5/);
-  assert.match(index, /bootstrap\.js\?v=5/);
+  assert.match(index, /bootstrap\.js\?v=6/);
+  assert.match(index, /push-client\.js\?v=7/);
+  assert.match(index, /push-ui\.js\?v=7/);
 });
 
-test('el service worker guarda el shell y responde al tocar una notificación', () => {
-  assert.match(serviceWorker, /planorha-v5/);
+test('el service worker guarda el shell y responde a push y notificaciones', () => {
+  assert.match(serviceWorker, /planorha-v7/);
+  assert.match(serviceWorker, /addEventListener\('push'/);
+  assert.match(serviceWorker, /showNotification/);
   assert.match(serviceWorker, /notificationclick/);
   assert.match(serviceWorker, /productivity-core\.js\?v=5/);
+  assert.match(serviceWorker, /push-client\.js\?v=7/);
 });
 
 test('los recursos locales del shell existen', async () => {
@@ -38,6 +43,8 @@ test('los recursos locales del shell existen', async () => {
     '../sync-core.js',
     '../productivity-core.js',
     '../manual-order-addon.js',
+    '../push-client.js',
+    '../push-ui.js',
     '../app.js',
     '../icons/icon-192.png',
     '../icons/icon-512.png'
