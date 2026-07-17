@@ -48,6 +48,19 @@
     }
 
     const copy = statusCopy(api.state);
+    const signature = JSON.stringify({
+      supported: api.state.supported,
+      configured: api.state.configured,
+      permission: api.state.permission,
+      subscribed: Boolean(api.state.subscription),
+      loading: api.state.loading,
+      error: api.state.error,
+      title: copy.title,
+      text: copy.text
+    });
+    if (card.dataset.pushSignature === signature) return;
+    card.dataset.pushSignature = signature;
+
     card.innerHTML = `
       <p class="eyebrow">Segundo plano</p>
       <h2>${escapeHtml(copy.title)}</h2>
