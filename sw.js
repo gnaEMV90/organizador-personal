@@ -1,13 +1,15 @@
-const CACHE_NAME = 'planorha-v4';
+const CACHE_NAME = 'planorha-v5';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/styles.css',
   '/sync.css?v=4',
-  '/bootstrap.js?v=4',
+  '/productivity.css?v=5',
+  '/bootstrap.js?v=5',
   '/sync-core.js?v=4',
-  '/app.js?v=4',
-  '/manifest.webmanifest',
+  '/productivity-core.js?v=5',
+  '/app.js?v=5',
+  '/manifest.webmanifest?v=5',
   '/icons/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
@@ -32,7 +34,6 @@ self.addEventListener('fetch', event => {
   if (url.pathname.startsWith('/api/')) return;
 
   const isAppAsset = event.request.mode === 'navigate' || /\.(?:js|css|html|webmanifest)$/.test(url.pathname);
-
   if (isAppAsset) {
     event.respondWith(
       fetch(event.request)
@@ -52,5 +53,20 @@ self.addEventListener('fetch', event => {
       caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
       return response;
     }))
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || '/#hoy', self.location.origin).href;
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      const existing = windowClients.find(client => client.url.startsWith(self.location.origin));
+      if (existing) {
+        existing.navigate(targetUrl);
+        return existing.focus();
+      }
+      return clients.openWindow(targetUrl);
+    })
   );
 });
