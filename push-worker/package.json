@@ -1,0 +1,16 @@
+{
+  "name": "planorha-push-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/index.js",
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "web-push": "3.6.7"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
