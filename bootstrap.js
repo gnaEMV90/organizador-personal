@@ -88,7 +88,6 @@ import {
     const elements = document.querySelectorAll('.js-sync-status');
     const account = document.querySelector('#sync-account');
     const button = document.querySelector('#sync-now-button');
-
     const labels = {
       local: 'Guardado local',
       connecting: 'Conectando…',
@@ -98,7 +97,6 @@ import {
       unavailable: 'Sincronización pendiente',
       error: 'Error de sincronización'
     };
-
     const defaultDetail = status === 'synced' ? formatSyncTime(sync.updatedAt) : '';
     elements.forEach(element => {
       element.dataset.status = status;
@@ -119,7 +117,6 @@ import {
       cache: 'no-store',
       headers: { Accept: 'application/json' }
     });
-
     if ([401, 403, 404, 503].includes(response.status)) return { available: false, status: response.status };
     if (!response.ok) throw new Error(`GET ${API_URL}: ${response.status}`);
     return { available: true, ...(await response.json()) };
@@ -132,7 +129,6 @@ import {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ state })
     });
-
     if (!response.ok) {
       if ([401, 403, 503].includes(response.status)) {
         sync.enabled = false;
@@ -187,7 +183,6 @@ import {
         nativeSetItem.call(this, key, value);
         return;
       }
-
       try {
         const previous = readLocalState();
         const incoming = JSON.parse(value);
@@ -205,8 +200,8 @@ import {
 
   function loadApplication() {
     const script = document.createElement('script');
-    script.src = '/app.js?v=4';
-    script.defer = true;
+    script.type = 'module';
+    script.src = '/app.js?v=5';
     script.onerror = () => updateStatus('error');
     script.onload = () => { sync.appLoaded = true; };
     document.body.appendChild(script);
@@ -214,30 +209,26 @@ import {
 
   function applyBrandAndSettingsPatches() {
     const patch = () => {
-      if (document.title.includes('Mi Organizador')) document.title = document.title.replace('Mi Organizador', 'Planorha');
-
       const settingsCards = [...document.querySelectorAll('.settings-card')];
       const storageCard = settingsCards.find(card => card.textContent.includes('Versión inicial') || card.dataset.syncCard === 'true');
-      if (storageCard) {
-        const connected = sync.enabled;
-        const signature = [connected, sync.user, sync.updatedAt].join('|');
-        if (storageCard.dataset.syncSignature === signature) return;
-        storageCard.dataset.syncCard = 'true';
-        storageCard.dataset.syncSignature = signature;
-        storageCard.innerHTML = `
-          <p class="eyebrow">Almacenamiento</p>
-          <h2>${connected ? 'Sincronización activa' : 'Modo local seguro'}</h2>
-          <p>${connected
-            ? 'Tus cambios se guardan en este dispositivo y se sincronizan con Cloudflare D1.'
-            : 'Tus datos continúan guardándose en este navegador mientras la sincronización no esté disponible.'}</p>
-          <ul class="info-list">
-            <li>Guardado automático local y funcionamiento sin conexión.</li>
-            <li>${connected ? `Cuenta: ${sync.user || 'autenticada'}.` : 'Sin conexión con la cuenta central.'}</li>
-            <li>${sync.updatedAt ? `Última sincronización: ${new Date(sync.updatedAt).toLocaleString('es-AR')}.` : 'Todavía no se registró una sincronización.'}</li>
-          </ul>`;
-      }
+      if (!storageCard) return;
+      const connected = sync.enabled;
+      const signature = [connected, sync.user, sync.updatedAt].join('|');
+      if (storageCard.dataset.syncSignature === signature) return;
+      storageCard.dataset.syncCard = 'true';
+      storageCard.dataset.syncSignature = signature;
+      storageCard.innerHTML = `
+        <p class="eyebrow">Almacenamiento</p>
+        <h2>${connected ? 'Sincronización activa' : 'Modo local seguro'}</h2>
+        <p>${connected
+          ? 'Tus cambios se guardan en este dispositivo y se sincronizan con Cloudflare D1.'
+          : 'Tus datos continúan guardándose en este navegador mientras la sincronización no esté disponible.'}</p>
+        <ul class="info-list">
+          <li>Guardado automático local y funcionamiento sin conexión.</li>
+          <li>${connected ? `Cuenta: ${sync.user || 'autenticada'}.` : 'Sin conexión con la cuenta central.'}</li>
+          <li>${sync.updatedAt ? `Última sincronización: ${new Date(sync.updatedAt).toLocaleString('es-AR')}.` : 'Todavía no se registró una sincronización.'}</li>
+        </ul>`;
     };
-
     const observer = new MutationObserver(patch);
     observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     patch();
@@ -247,14 +238,12 @@ import {
     updateStatus('connecting');
     const localState = readLocalState();
     const localMeta = readSyncMeta();
-
     try {
       const remote = await fetchRemoteState();
       if (!remote.available) {
         updateStatus('unavailable');
         return;
       }
-
       sync.enabled = true;
       sync.user = remote.user || null;
       sync.updatedAt = remote.updatedAt || null;
@@ -289,9 +278,7 @@ import {
         return;
       }
 
-      if (localMeta.updatedAt !== remote.updatedAt || !statesEqual(normalizeState(localState, localFallback), remoteState)) {
-        writeLocalState(remoteState);
-      }
+      if (localMeta.updatedAt !== remote.updatedAt || !statesEqual(normalizeState(localState, localFallback), remoteState)) writeLocalState(remoteState);
       setSyncMeta(remote, false);
       updateStatus('synced');
     } catch (error) {
@@ -304,7 +291,6 @@ import {
     if (!sync.enabled || sync.refreshing || !navigator.onLine) return;
     const meta = readSyncMeta();
     if (meta.dirty && !force) return;
-
     sync.refreshing = true;
     if (force) updateStatus('connecting');
     try {
@@ -312,7 +298,6 @@ import {
         await pushRemoteState(readLocalState());
         return;
       }
-
       const remote = await fetchRemoteState();
       if (!remote.available || !isValidState(remote.state)) return;
       const remoteState = normalizeState(remote.state, remote.updatedAt || EPOCH);
@@ -334,14 +319,8 @@ import {
     sync.pollTimer = setInterval(() => refreshFromRemote(), POLL_INTERVAL_MS);
   }
 
-  function setupSyncControls() {
-    document.querySelector('#sync-now-button')?.addEventListener('click', () => refreshFromRemote({ force: true }));
-  }
-
-  window.addEventListener('online', () => {
-    if (sync.enabled) refreshFromRemote({ force: true });
-    else updateStatus('local');
-  });
+  document.querySelector('#sync-now-button')?.addEventListener('click', () => refreshFromRemote({ force: true }));
+  window.addEventListener('online', () => sync.enabled ? refreshFromRemote({ force: true }) : updateStatus('local'));
   window.addEventListener('offline', () => updateStatus('offline'));
   window.addEventListener('focus', () => refreshFromRemote());
   document.addEventListener('visibilitychange', () => {
@@ -351,7 +330,6 @@ import {
   sync.syncNow = () => refreshFromRemote({ force: true });
   window.PlanorhaSync = sync;
   installStorageBridge();
-  setupSyncControls();
   applyBrandAndSettingsPatches();
   initialize().finally(() => {
     loadApplication();
