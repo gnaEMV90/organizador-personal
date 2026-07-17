@@ -1,6 +1,6 @@
 import webpush from 'web-push';
+import { dueTasks, reminderKey } from './schedule-core.js';
 
-const DELIVERY_WINDOW_MS = 10 * 60 * 1000;
 const LOG_RETENTION_DAYS = 180;
 
 function parseState(value) {
@@ -10,73 +10,6 @@ function parseState(value) {
   } catch {
     return null;
   }
-}
-
-function partsInTimeZone(date, timeZone) {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23'
-  });
-  return Object.fromEntries(
-    formatter.formatToParts(date)
-      .filter(part => part.type !== 'literal')
-      .map(part => [part.type, Number(part.value)])
-  );
-}
-
-function zonedDateTimeToUtc(dateValue, timeValue, timeZone) {
-  const [year, month, day] = String(dateValue || '').split('-').map(Number);
-  const [hour, minute] = String(timeValue || '').split(':').map(Number);
-  if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
-
-  const expectedAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
-  let candidate = new Date(expectedAsUtc);
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const actual = partsInTimeZone(candidate, timeZone || 'UTC');
-    const actualAsUtc = Date.UTC(
-      actual.year,
-      actual.month - 1,
-      actual.day,
-      actual.hour,
-      actual.minute,
-      actual.second || 0,
-      0
-    );
-    candidate = new Date(candidate.getTime() + (expectedAsUtc - actualAsUtc));
-  }
-
-  return candidate;
-}
-
-function reminderKey(task) {
-  if (!task?.date || !task?.time || task.reminderMinutes === '' || task.reminderMinutes == null) return '';
-  return `${task.date}T${task.time}|${Number(task.reminderMinutes) || 0}`;
-}
-
-function reminderInstant(task, timeZone) {
-  const dueAt = zonedDateTimeToUtc(task.date, task.time, timeZone);
-  const minutes = Number(task.reminderMinutes);
-  if (!dueAt || !Number.isFinite(minutes) || minutes < 0) return null;
-  return new Date(dueAt.getTime() - minutes * 60_000);
-}
-
-function dueTasks(state, timeZone, now) {
-  return (state.tasks || []).filter(task => {
-    if (!task || task.completed || task.archived) return false;
-    const key = reminderKey(task);
-    if (!key) return false;
-    const instant = reminderInstant(task, timeZone);
-    if (!instant) return false;
-    const age = now.getTime() - instant.getTime();
-    return age >= 0 && age <= DELIVERY_WINDOW_MS;
-  });
 }
 
 async function alreadyDelivered(db, userId, subscriptionId, taskId, key) {
@@ -118,7 +51,7 @@ async function markFailure(db, subscriptionId, error, disable = false) {
 
 async function sendTask(env, subscriptionRow, task, now) {
   const key = reminderKey(task);
-  if (await alreadyDelivered(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key)) return;
+  if (await alreadyDelivered(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key)) return false;
 
   const subscription = JSON.parse(subscriptionRow.subscription_json);
   const payload = JSON.stringify({
@@ -134,11 +67,13 @@ async function sendTask(env, subscriptionRow, task, now) {
     const timestamp = now.toISOString();
     await recordDelivery(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key, timestamp);
     await markSuccess(env.DB, subscriptionRow.id, timestamp);
+    return true;
   } catch (error) {
     const statusCode = Number(error?.statusCode || 0);
     const expired = statusCode === 404 || statusCode === 410;
     await markFailure(env.DB, subscriptionRow.id, error?.body || error?.message || error, expired);
     if (!expired) throw error;
+    return false;
   }
 }
 
@@ -164,10 +99,8 @@ async function processSubscriptions(env, now) {
     const tasks = dueTasks(state, row.timezone || 'UTC', now);
     for (const task of tasks) {
       try {
-        const wasDelivered = await alreadyDelivered(env.DB, row.user_id, row.id, task.id, reminderKey(task));
-        if (wasDelivered) continue;
-        await sendTask(env, row, task, now);
-        sent += 1;
+        const delivered = await sendTask(env, row, task, now);
+        if (delivered) sent += 1;
       } catch (error) {
         failed += 1;
         console.error('Planorha push delivery:', row.user_id, task.id, error);
@@ -207,11 +140,4 @@ export default {
     await cleanOldLogs(env.DB, now);
     console.log('Planorha push cron:', JSON.stringify({ at: now.toISOString(), ...result }));
   }
-};
-
-export {
-  zonedDateTimeToUtc,
-  reminderInstant,
-  reminderKey,
-  dueTasks
 };
