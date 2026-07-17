@@ -17,10 +17,19 @@
     if (!container) return;
     const rows = [...container.querySelectorAll(':scope > .task-row[data-task-id]')];
     if (rows.length < 2) return;
+
     const order = readOrderMap();
-    rows
-      .sort((left, right) => (order.get(left.dataset.taskId) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.dataset.taskId) ?? Number.MAX_SAFE_INTEGER))
-      .forEach(row => container.appendChild(row));
+    const sorted = [...rows].sort((left, right) =>
+      (order.get(left.dataset.taskId) ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(right.dataset.taskId) ?? Number.MAX_SAFE_INTEGER)
+    );
+    const currentIds = rows.map(row => row.dataset.taskId).join('|');
+    const sortedIds = sorted.map(row => row.dataset.taskId).join('|');
+    if (currentIds === sortedIds) return;
+
+    const fragment = document.createDocumentFragment();
+    sorted.forEach(row => fragment.appendChild(row));
+    container.appendChild(fragment);
   }
 
   const observer = new MutationObserver(applyManualOrder);
