@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check src/index.js",
+    "check": "node --check src/index.js && node --check src/schedule-core.js",
     "dev": "wrangler dev --test-scheduled",
+    "migrate": "wrangler d1 execute planorha-db --remote --file=../migrations/0002_push_notifications.sql",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
