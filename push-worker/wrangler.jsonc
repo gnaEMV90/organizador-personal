@@ -4,6 +4,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-07-17",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
   "vars": {
     "VAPID_PUBLIC_KEY": "BFBJYfmsYkFK3tHETq7VS8ivgrLyP0M_33TxpOjDTADiQpHzScgw_nTQrxKTbdZbU9QWe2lY3Fhkp70cesjoQ-g",
     "VAPID_SUBJECT": "mailto:german.andrighetti@gmail.com"
