@@ -8,11 +8,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Planorha" />
-  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="manifest" href="/manifest.webmanifest?v=5" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/sync.css?v=4" />
+  <link rel="stylesheet" href="/productivity.css?v=5" />
   <title>Planorha</title>
 </head>
 <body>
@@ -20,19 +21,17 @@
     <aside class="sidebar" aria-label="Navegación principal">
       <a class="brand" href="#hoy" aria-label="Ir al inicio">
         <span class="brand-mark" aria-hidden="true">P</span>
-        <span>
-          <strong>Planorha</strong>
-          <small>Tu día, en orden</small>
-        </span>
+        <span><strong>Planorha</strong><small>Tu día, en orden</small></span>
       </a>
 
       <nav class="nav-list">
         <button class="nav-item is-active" data-view="hoy"><span>Hoy</span><kbd>1</kbd></button>
-        <button class="nav-item" data-view="calendario"><span>Calendario</span><kbd>2</kbd></button>
-        <button class="nav-item" data-view="tareas"><span>Tareas</span><kbd>3</kbd></button>
-        <button class="nav-item" data-view="listas"><span>Listas</span><kbd>4</kbd></button>
-        <button class="nav-item" data-view="categorias"><span>Categorías</span><kbd>5</kbd></button>
-        <button class="nav-item" data-view="ajustes"><span>Ajustes</span><kbd>6</kbd></button>
+        <button class="nav-item" data-view="semana"><span>Semana</span><kbd>2</kbd></button>
+        <button class="nav-item" data-view="calendario"><span>Calendario</span><kbd>3</kbd></button>
+        <button class="nav-item" data-view="tareas"><span>Tareas</span><kbd>4</kbd></button>
+        <button class="nav-item" data-view="listas"><span>Listas</span><kbd>5</kbd></button>
+        <button class="nav-item" data-view="categorias"><span>Categorías</span><kbd>6</kbd></button>
+        <button class="nav-item" data-view="ajustes"><span>Ajustes</span><kbd>7</kbd></button>
       </nav>
 
       <div class="sidebar-footer">
@@ -57,14 +56,13 @@
           <button class="button button-primary" id="quick-add-button">+ Agregar</button>
         </div>
       </header>
-
       <main id="app-content" tabindex="-1"></main>
     </div>
   </div>
 
   <nav class="mobile-nav" aria-label="Navegación móvil">
     <button class="mobile-nav-item is-active" data-view="hoy"><span>Inicio</span></button>
-    <button class="mobile-nav-item" data-view="calendario"><span>Calendario</span></button>
+    <button class="mobile-nav-item" data-view="semana"><span>Semana</span></button>
     <button class="mobile-add" id="mobile-add-button" aria-label="Agregar elemento">+</button>
     <button class="mobile-nav-item" data-view="tareas"><span>Tareas</span></button>
     <button class="mobile-nav-item" data-view="listas"><span>Listas</span></button>
@@ -72,20 +70,17 @@
 
   <dialog id="action-dialog" class="dialog compact-dialog">
     <div class="dialog-header">
-      <div>
-        <p class="eyebrow">Nuevo elemento</p>
-        <h2>¿Qué querés agregar?</h2>
-      </div>
+      <div><p class="eyebrow">Nuevo elemento</p><h2>¿Qué querés agregar?</h2></div>
       <button class="icon-button" data-close-dialog aria-label="Cerrar">×</button>
     </div>
     <div class="quick-actions">
-      <button data-open-form="task"><strong>Tarea</strong><span>Con fecha, prioridad y categoría</span></button>
+      <button data-open-form="task"><strong>Tarea</strong><span>Con recurrencia y recordatorio</span></button>
       <button data-open-form="list"><strong>Lista</strong><span>Compras, pendientes o cualquier idea</span></button>
       <button data-open-form="category"><strong>Categoría</strong><span>Personalizá tu organización</span></button>
     </div>
   </dialog>
 
-  <dialog id="task-dialog" class="dialog">
+  <dialog id="task-dialog" class="dialog dialog-wide">
     <form id="task-form" method="dialog">
       <div class="dialog-header">
         <div><p class="eyebrow">Tareas</p><h2 id="task-dialog-title">Nueva tarea</h2></div>
@@ -99,7 +94,46 @@
         <label class="field">Hora<input name="time" type="time" /></label>
         <label class="field">Prioridad<select name="priority"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option></select></label>
         <label class="field">Categoría<select name="category"></select></label>
+        <label class="field">Recordatorio
+          <select name="reminderMinutes">
+            <option value="">Sin recordatorio</option>
+            <option value="0">A la hora indicada</option>
+            <option value="5">5 minutos antes</option>
+            <option value="10">10 minutos antes</option>
+            <option value="15">15 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+            <option value="60">1 hora antes</option>
+            <option value="1440">1 día antes</option>
+          </select>
+        </label>
+        <label class="field">Repetición
+          <select name="recurrenceType">
+            <option value="none">No repetir</option>
+            <option value="daily">Diaria</option>
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensual</option>
+          </select>
+        </label>
       </div>
+
+      <section class="recurrence-details" id="recurrence-details" hidden>
+        <div class="form-grid recurrence-grid">
+          <label class="field">Cada<input name="recurrenceInterval" type="number" min="1" max="365" value="1" /></label>
+          <label class="field">Finaliza el<input name="recurrenceEndDate" type="date" /></label>
+        </div>
+        <fieldset class="weekday-picker" id="weekly-days" hidden>
+          <legend>Días de la semana</legend>
+          <label><input type="checkbox" name="recurrenceWeekday" value="1" /> Lun</label>
+          <label><input type="checkbox" name="recurrenceWeekday" value="2" /> Mar</label>
+          <label><input type="checkbox" name="recurrenceWeekday" value="3" /> Mié</label>
+          <label><input type="checkbox" name="recurrenceWeekday" value="4" /> Jue</label>
+          <label><input type="checkbox" name="recurrenceWeekday" value="5" /> Vie</label>
+          <label><input type="checkbox" name="recurrenceWeekday" value="6" /> Sáb</label>
+          <label><input type="checkbox" name="recurrenceWeekday" value="0" /> Dom</label>
+        </fieldset>
+        <p class="form-help">La próxima ocurrencia se crea automáticamente al completar la actual.</p>
+      </section>
+
       <div class="dialog-actions"><button type="button" class="button button-ghost" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar tarea</button></div>
     </form>
   </dialog>
@@ -113,7 +147,10 @@
       <input type="hidden" name="id" />
       <label class="field field-wide">Nombre<input name="title" maxlength="80" required placeholder="Ej.: Compras del supermercado" /></label>
       <label class="field field-wide">Descripción<textarea name="notes" rows="3" maxlength="300" placeholder="Opcional"></textarea></label>
-      <label class="field field-wide">Categoría<select name="category"></select></label>
+      <div class="form-grid">
+        <label class="field">Categoría<select name="category"></select></label>
+        <label class="field">Fecha límite<input name="dueDate" type="date" /></label>
+      </div>
       <div class="dialog-actions"><button type="button" class="button button-ghost" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar lista</button></div>
     </form>
   </dialog>
@@ -134,6 +171,6 @@
   <input id="import-input" type="file" accept="application/json,.json" hidden />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="/bootstrap.js?v=4"></script>
+  <script type="module" src="/bootstrap.js?v=5"></script>
 </body>
 </html>
