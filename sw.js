@@ -5,6 +5,7 @@ const APP_SHELL = [
   '/styles.css',
   '/sync.css?v=4',
   '/productivity.css?v=5',
+  '/manual-order-addon.js?v=5',
   '/bootstrap.js?v=5',
   '/sync-core.js?v=4',
   '/productivity-core.js?v=5',
