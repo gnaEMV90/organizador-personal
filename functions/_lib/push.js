@@ -1,6 +1,18 @@
-export async function ensurePushSchema(db) {
-  await db.batch([
-    db.prepare(`
+let schemaReady = false;
+let schemaPromise = null;
+
+async function createMissingPushTables(db) {
+  const result = await db.prepare(`
+    SELECT name
+    FROM sqlite_schema
+    WHERE type = 'table'
+      AND name IN ('push_subscriptions', 'push_delivery_log')
+  `).all();
+
+  const existing = new Set((result.results || []).map(row => row.name));
+
+  if (!existing.has('push_subscriptions')) {
+    await db.prepare(`
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -16,12 +28,11 @@ export async function ensurePushSchema(db) {
         last_failure_at TEXT,
         last_error TEXT
       )
-    `),
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
-      ON push_subscriptions (user_id, enabled)
-    `),
-    db.prepare(`
+    `).run();
+  }
+
+  if (!existing.has('push_delivery_log')) {
+    await db.prepare(`
       CREATE TABLE IF NOT EXISTS push_delivery_log (
         user_id TEXT NOT NULL,
         subscription_id TEXT NOT NULL,
@@ -30,12 +41,18 @@ export async function ensurePushSchema(db) {
         sent_at TEXT NOT NULL,
         PRIMARY KEY (user_id, subscription_id, task_id, reminder_key)
       )
-    `),
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_push_delivery_log_sent
-      ON push_delivery_log (sent_at)
-    `)
-  ]);
+    `).run();
+  }
+}
+
+export async function ensurePushSchema(db) {
+  if (schemaReady) return;
+  if (!schemaPromise) {
+    schemaPromise = createMissingPushTables(db)
+      .then(() => { schemaReady = true; })
+      .finally(() => { schemaPromise = null; });
+  }
+  await schemaPromise;
 }
 
 export async function subscriptionId(endpoint) {
