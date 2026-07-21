@@ -22,6 +22,11 @@
       text: 'El navegador bloqueó el permiso. Debés habilitarlo desde la configuración del sitio o del sistema.',
       action: ''
     };
+    if (state.subscriptionNeedsRefresh) return {
+      title: 'Suscripción desactualizada',
+      text: 'Las claves de notificación cambiaron. Actualizá este dispositivo para poder recibir los próximos recordatorios.',
+      action: '<button class="button button-primary" type="button" data-push-action="enable">Actualizar este dispositivo</button>'
+    };
     if (state.subscription) return {
       title: 'Recordatorios en segundo plano activos',
       text: 'Este dispositivo puede recibir recordatorios aunque Planorha no esté abierta.',
@@ -53,6 +58,7 @@
       configured: api.state.configured,
       permission: api.state.permission,
       subscribed: Boolean(api.state.subscription),
+      subscriptionNeedsRefresh: Boolean(api.state.subscriptionNeedsRefresh),
       loading: api.state.loading,
       error: api.state.error,
       title: copy.title,
