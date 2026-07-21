@@ -9,6 +9,7 @@
     configured: false,
     permission: 'Notification' in window ? Notification.permission : 'unsupported',
     subscription: null,
+    subscriptionNeedsRefresh: false,
     publicKey: '',
     loading: false,
     error: ''
@@ -23,6 +24,18 @@
     const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
     const raw = atob(base64);
     return Uint8Array.from([...raw].map(char => char.charCodeAt(0)));
+  }
+
+  function arraysEqual(left, right) {
+    if (!left || !right || left.length !== right.length) return false;
+    return left.every((value, index) => value === right[index]);
+  }
+
+  function subscriptionMatchesPublicKey(subscription, publicKey) {
+    if (!subscription || !publicKey) return false;
+    const currentKey = subscription.options?.applicationServerKey;
+    if (!currentKey) return false;
+    return arraysEqual(new Uint8Array(currentKey), urlBase64ToUint8Array(publicKey));
   }
 
   async function fetchJson(url, options = {}) {
@@ -53,14 +66,30 @@
       state.permission = Notification.permission;
       const registration = await navigator.serviceWorker.ready;
       state.subscription = await registration.pushManager.getSubscription();
+      state.subscriptionNeedsRefresh = Boolean(
+        state.subscription && state.configured && !subscriptionMatchesPublicKey(state.subscription, state.publicKey)
+      );
     } catch (error) {
       state.error = error.message || 'No se pudo consultar Web Push.';
       state.configured = false;
+      state.subscriptionNeedsRefresh = false;
     } finally {
       state.loading = false;
       emit();
     }
     return { ...state };
+  }
+
+  async function revokeStoredSubscription(subscription) {
+    if (!subscription?.endpoint) return;
+    try {
+      await fetchJson(API_SUBSCRIPTION, {
+        method: 'DELETE',
+        body: JSON.stringify({ endpoint: subscription.endpoint })
+      });
+    } catch (error) {
+      console.warn('Planorha: no se pudo revocar la suscripción anterior en D1.', error);
+    }
   }
 
   async function subscribe() {
@@ -80,6 +109,13 @@
     try {
       const registration = await navigator.serviceWorker.ready;
       let subscription = await registration.pushManager.getSubscription();
+
+      if (subscription && !subscriptionMatchesPublicKey(subscription, state.publicKey)) {
+        await revokeStoredSubscription(subscription);
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -96,6 +132,7 @@
         })
       });
       state.subscription = subscription;
+      state.subscriptionNeedsRefresh = false;
       state.error = '';
     } catch (error) {
       state.error = error.message || 'No se pudo activar Web Push.';
@@ -115,13 +152,11 @@
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
-        await fetchJson(API_SUBSCRIPTION, {
-          method: 'DELETE',
-          body: JSON.stringify({ endpoint: subscription.endpoint })
-        });
+        await revokeStoredSubscription(subscription);
         await subscription.unsubscribe();
       }
       state.subscription = null;
+      state.subscriptionNeedsRefresh = false;
       state.error = '';
     } catch (error) {
       state.error = error.message || 'No se pudo desactivar Web Push.';
