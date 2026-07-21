@@ -2,6 +2,7 @@ import webpush from 'web-push';
 import { dueTasks, reminderKey } from './schedule-core.js';
 
 const LOG_RETENTION_DAYS = 180;
+const TEST_EXPIRATION_MS = 15 * 60 * 1000;
 
 function parseState(value) {
   try {
@@ -23,6 +24,21 @@ async function ensureStatusTable(db) {
       last_run_at TEXT,
       subscriptions INTEGER NOT NULL DEFAULT 0,
       due INTEGER NOT NULL DEFAULT 0,
+      sent INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT
+    )
+  `).run();
+}
+
+async function ensureTestTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS push_test_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT NOT NULL,
+      processed_at TEXT,
       sent INTEGER NOT NULL DEFAULT 0,
       failed INTEGER NOT NULL DEFAULT 0,
       last_error TEXT
@@ -59,6 +75,16 @@ async function readWorkerStatus(db) {
     SELECT last_run_at, subscriptions, due, sent, failed, last_error
     FROM push_worker_status
     WHERE id = 'main'
+  `).first();
+}
+
+async function readLatestTest(db) {
+  await ensureTestTable(db);
+  return db.prepare(`
+    SELECT status, created_at, processed_at, sent, failed, last_error
+    FROM push_test_requests
+    ORDER BY created_at DESC
+    LIMIT 1
   `).first();
 }
 
@@ -99,24 +125,14 @@ async function markFailure(db, subscriptionId, error, disable = false) {
   `).bind(subscriptionId, timestamp, safeError(error), disable ? 1 : 0).run();
 }
 
-async function sendTask(env, subscriptionRow, task, now) {
-  const key = reminderKey(task);
-  if (await alreadyDelivered(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key)) return false;
-
-  const subscription = JSON.parse(subscriptionRow.subscription_json);
-  const payload = JSON.stringify({
-    title: task.title || 'Planorha',
-    body: task.notes || `${task.date} a las ${task.time}`,
-    tag: `planorha-task-${task.id}-${key}`,
-    taskId: task.id,
-    url: '/#tareas'
-  });
-
+async function sendPayload(env, subscriptionRow, payload) {
   try {
-    await webpush.sendNotification(subscription, payload, { TTL: 3600, urgency: 'normal' });
-    const timestamp = now.toISOString();
-    await recordDelivery(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key, timestamp);
-    await markSuccess(env.DB, subscriptionRow.id, timestamp);
+    await webpush.sendNotification(
+      JSON.parse(subscriptionRow.subscription_json),
+      JSON.stringify(payload),
+      { TTL: 3600, urgency: 'high' }
+    );
+    await markSuccess(env.DB, subscriptionRow.id, new Date().toISOString());
     return true;
   } catch (error) {
     const statusCode = Number(error?.statusCode || 0);
@@ -124,6 +140,85 @@ async function sendTask(env, subscriptionRow, task, now) {
     await markFailure(env.DB, subscriptionRow.id, error, expired);
     throw error;
   }
+}
+
+async function sendTask(env, subscriptionRow, task, now) {
+  const key = reminderKey(task);
+  if (await alreadyDelivered(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key)) return false;
+
+  await sendPayload(env, subscriptionRow, {
+    title: task.title || 'Planorha',
+    body: task.notes || `${task.date} a las ${task.time}`,
+    tag: `planorha-task-${task.id}-${key}`,
+    taskId: task.id,
+    url: '/#tareas'
+  });
+
+  const timestamp = now.toISOString();
+  await recordDelivery(env.DB, subscriptionRow.user_id, subscriptionRow.id, task.id, key, timestamp);
+  return true;
+}
+
+async function processTestRequests(env, now) {
+  await ensureTestTable(env.DB);
+  const expiration = new Date(now.getTime() - TEST_EXPIRATION_MS).toISOString();
+  await env.DB.prepare(`
+    UPDATE push_test_requests
+    SET status = 'expired', processed_at = ?2, last_error = 'La prueba venció antes de ser procesada.'
+    WHERE status = 'pending' AND created_at < ?1
+  `).bind(expiration, now.toISOString()).run();
+
+  const pending = await env.DB.prepare(`
+    SELECT id, user_id, created_at
+    FROM push_test_requests
+    WHERE status = 'pending'
+    ORDER BY created_at ASC
+    LIMIT 20
+  `).all();
+
+  let testsSent = 0;
+  let testsFailed = 0;
+
+  for (const request of pending.results || []) {
+    const subscriptions = await env.DB.prepare(`
+      SELECT id, user_id, subscription_json
+      FROM push_subscriptions
+      WHERE user_id = ?1 AND enabled = 1
+    `).bind(request.user_id).all();
+
+    let sent = 0;
+    let failed = 0;
+    let lastError = '';
+
+    for (const subscription of subscriptions.results || []) {
+      try {
+        await sendPayload(env, subscription, {
+          title: 'Planorha',
+          body: 'Prueba real del servidor: las notificaciones en segundo plano funcionan.',
+          tag: `planorha-server-test-${request.id}`,
+          taskId: '',
+          url: '/#ajustes'
+        });
+        sent += 1;
+      } catch (error) {
+        failed += 1;
+        lastError = safeError(error);
+      }
+    }
+
+    if (!(subscriptions.results || []).length) lastError = 'No hay suscripciones activas para este usuario.';
+    const status = sent > 0 ? 'sent' : 'failed';
+    await env.DB.prepare(`
+      UPDATE push_test_requests
+      SET status = ?2, processed_at = ?3, sent = ?4, failed = ?5, last_error = ?6
+      WHERE id = ?1
+    `).bind(request.id, status, now.toISOString(), sent, failed, lastError || null).run();
+
+    testsSent += sent;
+    testsFailed += failed || (sent ? 0 : 1);
+  }
+
+  return { tests: (pending.results || []).length, testsSent, testsFailed };
 }
 
 async function processSubscriptions(env, now) {
@@ -183,9 +278,12 @@ export default {
     if (url.pathname !== '/health') return new Response('Not found', { status: 404 });
 
     let status = null;
+    let latestTest = null;
     let statusError = '';
     try {
-      status = env.DB ? await readWorkerStatus(env.DB) : null;
+      if (env.DB) {
+        [status, latestTest] = await Promise.all([readWorkerStatus(env.DB), readLatestTest(env.DB)]);
+      }
     } catch (error) {
       statusError = safeError(error);
     }
@@ -201,6 +299,14 @@ export default {
         failed: Number(status.failed || 0),
         lastError: status.last_error || null
       } : null,
+      latestTest: latestTest ? {
+        status: latestTest.status,
+        createdAt: latestTest.created_at,
+        processedAt: latestTest.processed_at,
+        sent: Number(latestTest.sent || 0),
+        failed: Number(latestTest.failed || 0),
+        lastError: latestTest.last_error || null
+      } : null,
       statusError: statusError || null
     });
   },
@@ -211,7 +317,8 @@ export default {
 
     try {
       configureVapid(env);
-      result = await processSubscriptions(env, now);
+      const testResult = await processTestRequests(env, now);
+      result = { ...(await processSubscriptions(env, now)), ...testResult };
       await cleanOldLogs(env.DB, now);
     } catch (error) {
       result.failed += 1;
