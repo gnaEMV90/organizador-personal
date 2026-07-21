@@ -6,7 +6,7 @@ async function createMissingPushTables(db) {
     SELECT name
     FROM sqlite_schema
     WHERE type = 'table'
-      AND name IN ('push_subscriptions', 'push_delivery_log')
+      AND name IN ('push_subscriptions', 'push_delivery_log', 'push_test_requests')
   `).all();
 
   const existing = new Set((result.results || []).map(row => row.name));
@@ -40,6 +40,21 @@ async function createMissingPushTables(db) {
         reminder_key TEXT NOT NULL,
         sent_at TEXT NOT NULL,
         PRIMARY KEY (user_id, subscription_id, task_id, reminder_key)
+      )
+    `).run();
+  }
+
+  if (!existing.has('push_test_requests')) {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS push_test_requests (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT NOT NULL,
+        processed_at TEXT,
+        sent INTEGER NOT NULL DEFAULT 0,
+        failed INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT
       )
     `).run();
   }
