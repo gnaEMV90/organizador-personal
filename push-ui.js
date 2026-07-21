@@ -5,6 +5,19 @@
     return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   }
 
+  function formatTest(test) {
+    if (!test) return '';
+    const labels = {
+      pending: 'Prueba pendiente: el Worker la enviará dentro de aproximadamente un minuto.',
+      sent: 'Última prueba del servidor enviada correctamente.',
+      failed: 'La última prueba del servidor falló.',
+      expired: 'La última prueba venció antes de ser procesada.'
+    };
+    const detail = labels[test.status] || `Estado de la última prueba: ${test.status}.`;
+    const error = test.last_error ? ` Error: ${test.last_error}` : '';
+    return `<p class="settings-note ${test.status === 'failed' || test.status === 'expired' ? 'push-error' : ''}">${escapeHtml(detail + error)}</p>`;
+  }
+
   function statusCopy(state) {
     if (!state.supported) return {
       title: 'No disponible en este navegador',
@@ -30,7 +43,7 @@
     if (state.subscription) return {
       title: 'Recordatorios en segundo plano activos',
       text: 'Este dispositivo puede recibir recordatorios aunque Planorha no esté abierta.',
-      action: '<button class="button button-ghost" type="button" data-push-action="disable">Desactivar en este dispositivo</button>'
+      action: '<button class="button button-primary" type="button" data-push-action="test-server">Probar con Planorha cerrada</button><button class="button button-ghost" type="button" data-push-action="disable">Desactivar en este dispositivo</button>'
     };
     return {
       title: 'Recordatorios con Planorha cerrada',
@@ -59,6 +72,7 @@
       permission: api.state.permission,
       subscribed: Boolean(api.state.subscription),
       subscriptionNeedsRefresh: Boolean(api.state.subscriptionNeedsRefresh),
+      latestServerTest: api.state.latestServerTest,
       loading: api.state.loading,
       error: api.state.error,
       title: copy.title,
@@ -72,6 +86,7 @@
       <h2>${escapeHtml(copy.title)}</h2>
       <p>${escapeHtml(copy.text)}</p>
       ${api.state.error ? `<p class="settings-note push-error">${escapeHtml(api.state.error)}</p>` : ''}
+      ${formatTest(api.state.latestServerTest)}
       <div class="settings-actions">${copy.action}<button class="button button-ghost" type="button" data-push-action="refresh">Actualizar estado</button></div>`;
 
     card.querySelector('[data-push-action="enable"]')?.addEventListener('click', async event => {
@@ -88,6 +103,16 @@
       event.currentTarget.disabled = true;
       try {
         await api.unsubscribe();
+      } catch (error) {
+        console.warn('Planorha Web Push:', error);
+      }
+      render();
+    });
+
+    card.querySelector('[data-push-action="test-server"]')?.addEventListener('click', async event => {
+      event.currentTarget.disabled = true;
+      try {
+        await api.testServerPush();
       } catch (error) {
         console.warn('Planorha Web Push:', error);
       }
