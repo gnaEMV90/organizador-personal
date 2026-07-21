@@ -12,6 +12,56 @@ function parseState(value) {
   }
 }
 
+function safeError(error) {
+  return String(error?.body || error?.message || error || 'Error desconocido').slice(0, 600);
+}
+
+async function ensureStatusTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS push_worker_status (
+      id TEXT PRIMARY KEY,
+      last_run_at TEXT,
+      subscriptions INTEGER NOT NULL DEFAULT 0,
+      due INTEGER NOT NULL DEFAULT 0,
+      sent INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT
+    )
+  `).run();
+}
+
+async function saveWorkerStatus(db, status) {
+  await ensureStatusTable(db);
+  await db.prepare(`
+    INSERT INTO push_worker_status (
+      id, last_run_at, subscriptions, due, sent, failed, last_error
+    ) VALUES ('main', ?1, ?2, ?3, ?4, ?5, ?6)
+    ON CONFLICT(id) DO UPDATE SET
+      last_run_at = excluded.last_run_at,
+      subscriptions = excluded.subscriptions,
+      due = excluded.due,
+      sent = excluded.sent,
+      failed = excluded.failed,
+      last_error = excluded.last_error
+  `).bind(
+    status.lastRunAt,
+    status.subscriptions || 0,
+    status.due || 0,
+    status.sent || 0,
+    status.failed || 0,
+    status.lastError || null
+  ).run();
+}
+
+async function readWorkerStatus(db) {
+  await ensureStatusTable(db);
+  return db.prepare(`
+    SELECT last_run_at, subscriptions, due, sent, failed, last_error
+    FROM push_worker_status
+    WHERE id = 'main'
+  `).first();
+}
+
 async function alreadyDelivered(db, userId, subscriptionId, taskId, key) {
   const row = await db.prepare(`
     SELECT 1 AS found
@@ -46,7 +96,7 @@ async function markFailure(db, subscriptionId, error, disable = false) {
         enabled = CASE WHEN ?4 = 1 THEN 0 ELSE enabled END,
         updated_at = ?2
     WHERE id = ?1
-  `).bind(subscriptionId, timestamp, String(error || '').slice(0, 1000), disable ? 1 : 0).run();
+  `).bind(subscriptionId, timestamp, safeError(error), disable ? 1 : 0).run();
 }
 
 async function sendTask(env, subscriptionRow, task, now) {
@@ -71,9 +121,8 @@ async function sendTask(env, subscriptionRow, task, now) {
   } catch (error) {
     const statusCode = Number(error?.statusCode || 0);
     const expired = statusCode === 404 || statusCode === 410;
-    await markFailure(env.DB, subscriptionRow.id, error?.body || error?.message || error, expired);
-    if (!expired) throw error;
-    return false;
+    await markFailure(env.DB, subscriptionRow.id, error, expired);
+    throw error;
   }
 }
 
@@ -90,25 +139,30 @@ async function processSubscriptions(env, now) {
     WHERE ps.enabled = 1
   `).all();
 
+  let due = 0;
   let sent = 0;
   let failed = 0;
+  let lastError = '';
 
   for (const row of rows.results || []) {
     const state = parseState(row.state_json);
     if (!state) continue;
     const tasks = dueTasks(state, row.timezone || 'UTC', now);
+    due += tasks.length;
+
     for (const task of tasks) {
       try {
         const delivered = await sendTask(env, row, task, now);
         if (delivered) sent += 1;
       } catch (error) {
         failed += 1;
-        console.error('Planorha push delivery:', row.user_id, task.id, error);
+        lastError = safeError(error);
+        console.error('Planorha push delivery:', JSON.stringify({ user: row.user_id, taskId: task.id, error: lastError }));
       }
     }
   }
 
-  return { subscriptions: (rows.results || []).length, sent, failed };
+  return { subscriptions: (rows.results || []).length, due, sent, failed, lastError };
 }
 
 async function cleanOldLogs(db, now) {
@@ -127,17 +181,49 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname !== '/health') return new Response('Not found', { status: 404 });
+
+    let status = null;
+    let statusError = '';
+    try {
+      status = env.DB ? await readWorkerStatus(env.DB) : null;
+    } catch (error) {
+      statusError = safeError(error);
+    }
+
     return Response.json({
       ok: Boolean(env.DB && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT),
-      service: 'planorha-push-worker'
+      service: 'planorha-push-worker',
+      cron: status ? {
+        lastRunAt: status.last_run_at,
+        subscriptions: Number(status.subscriptions || 0),
+        due: Number(status.due || 0),
+        sent: Number(status.sent || 0),
+        failed: Number(status.failed || 0),
+        lastError: status.last_error || null
+      } : null,
+      statusError: statusError || null
     });
   },
 
   async scheduled(controller, env) {
-    configureVapid(env);
     const now = new Date(controller.scheduledTime || Date.now());
-    const result = await processSubscriptions(env, now);
-    await cleanOldLogs(env.DB, now);
+    let result = { subscriptions: 0, due: 0, sent: 0, failed: 0, lastError: '' };
+
+    try {
+      configureVapid(env);
+      result = await processSubscriptions(env, now);
+      await cleanOldLogs(env.DB, now);
+    } catch (error) {
+      result.failed += 1;
+      result.lastError = safeError(error);
+      console.error('Planorha push cron fatal:', result.lastError);
+    }
+
+    await saveWorkerStatus(env.DB, {
+      lastRunAt: now.toISOString(),
+      ...result
+    });
+
     console.log('Planorha push cron:', JSON.stringify({ at: now.toISOString(), ...result }));
   }
 };
