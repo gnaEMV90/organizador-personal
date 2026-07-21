@@ -3,6 +3,7 @@
 
   const API_CONFIG = '/api/push/config';
   const API_SUBSCRIPTION = '/api/push/subscription';
+  const API_TEST = '/api/push/test';
 
   const state = {
     supported: 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window,
@@ -11,6 +12,7 @@
     subscription: null,
     subscriptionNeedsRefresh: false,
     publicKey: '',
+    latestServerTest: null,
     loading: false,
     error: ''
   };
@@ -60,9 +62,13 @@
     state.error = '';
     emit();
     try {
-      const config = await fetchJson(API_CONFIG);
+      const [config, testStatus] = await Promise.all([
+        fetchJson(API_CONFIG),
+        fetchJson(API_TEST).catch(() => ({ test: null }))
+      ]);
       state.configured = Boolean(config.enabled && config.publicKey);
       state.publicKey = config.publicKey || '';
+      state.latestServerTest = testStatus.test || null;
       state.permission = Notification.permission;
       const registration = await navigator.serviceWorker.ready;
       state.subscription = await registration.pushManager.getSubscription();
@@ -168,11 +174,33 @@
     return { ...state };
   }
 
+  async function testServerPush() {
+    if (!state.subscription || state.subscriptionNeedsRefresh) {
+      throw new Error('Primero activá correctamente este dispositivo.');
+    }
+
+    state.loading = true;
+    state.error = '';
+    emit();
+    try {
+      const payload = await fetchJson(API_TEST, { method: 'POST', body: '{}' });
+      state.latestServerTest = payload.test || null;
+    } catch (error) {
+      state.error = error.message || 'No se pudo programar la prueba del servidor.';
+      throw error;
+    } finally {
+      state.loading = false;
+      emit();
+    }
+    return { ...state };
+  }
+
   window.PlanorhaPush = {
     state,
     refresh,
     subscribe,
-    unsubscribe
+    unsubscribe,
+    testServerPush
   };
 
   window.addEventListener('load', () => refresh());
