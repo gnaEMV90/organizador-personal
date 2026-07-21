@@ -284,68 +284,42 @@ import {
             <div class="section-header"><div><h2>Tareas de hoy</h2><p>Lo que necesita tu atención ahora.</p></div><button class="text-button" data-action="new-task">+ Nueva tarea</button></div>
             <div class="panel task-list">${todayTasks.length ? todayTasks.map(task => taskRow(task)).join('') : emptyState('No hay tareas para hoy', 'Agregá una tarea o aprovechá el día despejado.', 'Agregar tarea', 'new-task')}</div>
           </section>
-          ${overdue.length ? `<section class="section"><div class="section-header"><div><h2>Vencidas</h2><p>Pendientes de días anteriores.</p></div></div><div class="panel task-list">${overdue.slice(0, 5).map(task => taskRow(task, true)).join('')}</div></section>` : ''}
+          ${overdue.length ? `<section class="section"><div class="section-header"><div><h2>Vencidas</h2><p>Conviene resolverlas o reprogramarlas.</p></div><button class="text-button" data-action="go-tasks">Ver todas</button></div><div class="panel task-list">${overdue.slice(0, 4).map(task => taskRow(task)).join('')}</div></section>` : ''}
         </div>
-        <aside>
-          <section class="section" style="margin-top:0">
-            <div class="section-header"><div><h2>Próximas</h2><p>Lo que viene después.</p></div><button class="text-button" data-action="go-week">Ver semana</button></div>
-            <div class="panel task-list">${upcoming.length ? upcoming.map(task => taskRow(task, true)).join('') : emptyState('Sin próximas tareas', 'Todavía no hay pendientes con fecha futura.', null, null)}</div>
-          </section>
-          <section class="section">
-            <div class="section-header"><div><h2>Tus listas</h2><p>Compras y pendientes rápidos.</p></div><button class="text-button" data-action="go-lists">Abrir listas</button></div>
-            <div class="panel">
-              ${state.lists.length ? [...state.lists].sort((a, b) => orderValue(a) - orderValue(b)).slice(0, 4).map(list => {
-                const items = list.items || [];
-                const completed = items.filter(item => item.completed).length;
-                const due = list.dueDate ? ` · vence ${formatDate(list.dueDate)}` : '';
-                return `<button class="task-row list-summary-row" data-action="open-list-view"><span class="category-swatch list-summary-swatch" style="--category-color:${categoryById(list.categoryId).color}"></span><div><p class="task-title">${escapeHtml(list.title)}</p><div class="task-meta"><span>${completed}/${items.length} completados${escapeHtml(due)}</span></div></div><span>›</span></button>`;
-              }).join('') : emptyState('No hay listas', 'Creá una lista para compras o cualquier grupo de pendientes.', 'Nueva lista', 'new-list')}
-            </div>
-          </section>
+        <aside class="side-stack">
+          <section class="quote-card"><p>“Un lugar para cada cosa y cada cosa en su momento.”</p><span>Planorha</span></section>
+          <section class="panel panel-body"><div class="section-header"><div><h3>Próximas</h3><p>Lo que viene después.</p></div></div><div class="mini-list">${upcoming.length ? upcoming.map(task => `<button data-action="edit-week-task" data-task-id="${escapeHtml(task.id)}"><span class="category-swatch" style="--category-color:${categoryById(task.categoryId).color}"></span><span><strong>${escapeHtml(task.title)}</strong><small>${formatDate(task.date, { weekday: 'short', day: 'numeric', month: 'short' })}${task.time ? ` · ${task.time}` : ''}</small></span></button>`).join('') : '<p class="muted-copy">No hay tareas próximas.</p>'}</div></section>
+          <button class="panel panel-body list-summary-button" data-action="open-list-view"><span><small>Listas</small><strong>${state.lists.length}</strong></span><span><small>Ítems pendientes</small><strong>${pendingListItems}</strong></span></button>
         </aside>
       </div>`;
   }
 
   function renderWeek() {
     const days = weekDates(weekCursor);
-    const first = days[0];
-    const last = days[6];
-    const rangeTitle = `${formatDate(dateKey(first), { day: 'numeric', month: 'short' })} — ${formatDate(dateKey(last), { day: 'numeric', month: 'short', year: 'numeric' })}`;
-    const tasks = activeTasks().filter(task => !task.completed);
-
+    const start = days[0];
+    const end = days[6];
+    const title = `${formatDate(dateKey(start), { day: 'numeric', month: 'short' })} — ${formatDate(dateKey(end), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    const unplanned = orderedTasks(activeTasks().filter(task => !task.completed && !task.date));
     return `
-      <div class="section-header week-header">
-        <div><h2>${escapeHtml(rangeTitle)}</h2><p>Una vista práctica de los próximos siete días.</p></div>
-        <div class="toolbar-actions"><button class="button button-ghost button-small" data-action="week-prev">‹ Anterior</button><button class="button button-ghost button-small" data-action="week-today">Esta semana</button><button class="button button-ghost button-small" data-action="week-next">Siguiente ›</button><button class="button button-primary button-small" data-action="go-calendar">Ver mes</button></div>
-      </div>
-      <section class="week-board">
-        ${days.map(day => {
-          const key = dateKey(day);
-          const dayTasks = orderedTasks(tasks.filter(task => task.date === key));
-          const dueLists = state.lists.filter(list => list.dueDate === key);
-          return `<article class="week-column ${key === todayKey() ? 'is-today' : ''}">
-            <header><span>${new Intl.DateTimeFormat('es-AR', { weekday: 'short' }).format(day)}</span><strong>${day.getDate()}</strong></header>
-            <button class="week-add" data-action="new-task-week" data-date="${key}">+ Agregar</button>
-            <div class="week-items">
-              ${dayTasks.map(task => `<button class="week-task" data-action="edit-week-task" data-task-id="${escapeHtml(task.id)}" style="--category-color:${categoryById(task.categoryId).color}"><strong>${escapeHtml(task.title)}</strong><span>${task.time ? escapeHtml(task.time) : 'Sin hora'}${task.priority === 'high' ? ' · Alta' : ''}</span></button>`).join('')}
-              ${dueLists.map(list => `<button class="week-task is-list" data-action="go-lists" style="--category-color:${categoryById(list.categoryId).color}"><strong>Lista: ${escapeHtml(list.title)}</strong><span>Vencimiento</span></button>`).join('')}
-              ${!dayTasks.length && !dueLists.length ? '<p class="week-empty">Sin pendientes</p>' : ''}
-            </div>
-          </article>`;
-        }).join('')}
-      </section>`;
+      <div class="section-header"><div><h2>Semana actual</h2><p>${escapeHtml(title)}</p></div><div class="toolbar-actions"><button class="icon-button" data-action="week-prev" aria-label="Semana anterior">‹</button><button class="button button-ghost button-small" data-action="week-today">Esta semana</button><button class="icon-button" data-action="week-next" aria-label="Semana siguiente">›</button></div></div>
+      <div class="week-grid">${days.map(day => {
+        const key = dateKey(day);
+        const tasks = orderedTasks(activeTasks().filter(task => task.date === key));
+        return `<section class="week-day ${key === todayKey() ? 'is-today' : ''}"><header><span>${new Intl.DateTimeFormat('es-AR', { weekday: 'short' }).format(day)}</span><strong>${day.getDate()}</strong></header><div class="week-day-tasks">${tasks.length ? tasks.map(task => `<button class="week-task ${task.completed ? 'is-complete' : ''}" data-action="edit-week-task" data-task-id="${escapeHtml(task.id)}" style="--category-color:${categoryById(task.categoryId).color}"><span>${escapeHtml(task.time || 'Todo el día')}</span><strong>${escapeHtml(task.title)}</strong></button>`).join('') : '<p>Sin tareas</p>'}</div><button class="week-add" data-action="new-task-week" data-date="${key}">+ Agregar</button></section>`;
+      }).join('')}</div>
+      ${unplanned.length ? `<section class="section"><div class="section-header"><div><h2>Sin fecha</h2><p>Pendientes que todavía no ubicás en la semana.</p></div></div><div class="panel task-list">${unplanned.map(task => taskRow(task)).join('')}</div></section>` : ''}`;
   }
 
   function renderTasks() {
-    const categories = categoryOptions(uiPrefs.taskCategory);
-    const completedCount = activeTasks().filter(task => task.completed).length;
+    const categories = state.categories.map(category => `<option value="${escapeHtml(category.id)}" ${uiPrefs.taskCategory === category.id ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('');
+    const completedCount = state.tasks.filter(task => task.completed && !task.archived).length;
     return `
-      <div class="section-header"><div><h2>Todos tus pendientes</h2><p>Buscá, filtrá, duplicá, archivá y ordená tus tareas.</p></div><div class="toolbar-actions">${completedCount ? '<button class="button button-ghost" data-action="archive-completed">Archivar completadas</button>' : ''}<button class="button button-primary" data-action="new-task">+ Nueva tarea</button></div></div>
-      <div class="filters">
+      <div class="section-header"><div><h2>Todas tus tareas</h2><p>Buscá, filtrá, ordená y archivá lo que ya terminaste.</p></div><div class="toolbar-actions">${completedCount ? `<button class="button button-ghost" data-action="archive-completed">Archivar completadas (${completedCount})</button>` : ''}<button class="button button-primary" data-action="new-task">+ Nueva tarea</button></div></div>
+      <div class="filter-bar">
         <input class="search-input" id="task-search" type="search" placeholder="Buscar tareas..." value="${escapeHtml(uiPrefs.taskSearch)}" />
         <select class="filter-select" id="task-status-filter">
           <option value="pending" ${uiPrefs.taskStatus === 'pending' ? 'selected' : ''}>Pendientes</option>
-          <option value="all" ${uiPrefs.taskStatus === 'all' ? 'selected' : ''}>Todas activas</option>
+          <option value="all" ${uiPrefs.taskStatus === 'all' ? 'selected' : ''}>Todas</option>
           <option value="completed" ${uiPrefs.taskStatus === 'completed' ? 'selected' : ''}>Completadas</option>
           <option value="overdue" ${uiPrefs.taskStatus === 'overdue' ? 'selected' : ''}>Vencidas</option>
           <option value="nodate" ${uiPrefs.taskStatus === 'nodate' ? 'selected' : ''}>Sin fecha</option>
@@ -448,8 +422,8 @@ import {
 
   function notificationStatusText() {
     if (!('Notification' in window)) return 'Este navegador no admite notificaciones web.';
-    if (Notification.permission === 'granted') return 'Las notificaciones están habilitadas. Planorha avisará mientras la aplicación esté abierta o activa en segundo plano.';
-    if (Notification.permission === 'denied') return 'Las notificaciones están bloqueadas en la configuración del navegador.';
+    if (Notification.permission === 'granted') return 'Las notificaciones están habilitadas en este dispositivo.';
+    if (Notification.permission === 'denied') return 'Las notificaciones están bloqueadas en la configuración del navegador o de Windows.';
     return 'Podés habilitar avisos para las tareas que tengan fecha, hora y recordatorio.';
   }
 
@@ -461,7 +435,7 @@ import {
       <div class="settings-grid">
         <section class="settings-card"><p class="eyebrow">Respaldo</p><h2>Tus datos</h2><p>Descargá una copia completa en formato JSON o restaurala en otro navegador.</p><div class="settings-actions"><button class="button button-primary" data-action="export-data">Exportar datos</button><button class="button button-ghost" data-action="import-data">Importar copia</button></div></section>
         <section class="settings-card"><p class="eyebrow">Aplicación</p><h2>${standalone ? 'Planorha instalada' : 'Instalar en el celular'}</h2><p>${standalone ? 'La aplicación se está ejecutando en modo independiente.' : isIos ? 'En iPhone: abrí Planorha con Safari, tocá Compartir y luego “Agregar a pantalla de inicio”.' : 'Instalá Planorha para abrirla desde la pantalla de inicio y mejorar el funcionamiento sin conexión.'}</p><div class="settings-actions">${!standalone && !isIos ? '<button class="button button-primary" data-action="install-app">Instalar aplicación</button>' : ''}</div></section>
-        <section class="settings-card"><p class="eyebrow">Recordatorios</p><h2>Notificaciones</h2><p>${escapeHtml(notificationStatusText())}</p><div class="settings-actions">${notificationButton}<button class="button button-ghost" data-action="test-notification" ${'Notification' in window && Notification.permission === 'granted' ? '' : 'disabled'}>Probar aviso</button></div><p class="settings-note">Los avisos con la aplicación completamente cerrada requieren notificaciones push del servidor; esa capacidad no está disponible todavía.</p></section>
+        <section class="settings-card"><p class="eyebrow">Prueba inmediata</p><h2>Notificación en este dispositivo</h2><p>${escapeHtml(notificationStatusText())}</p><div class="settings-actions">${notificationButton}<button class="button button-ghost" data-action="test-notification" ${'Notification' in window && Notification.permission === 'granted' ? '' : 'disabled'}>Probar notificación ahora</button></div><p class="settings-note">Esta prueba muestra un aviso inmediato en Windows o en el sistema del dispositivo. La tarjeta “Segundo plano” controla los recordatorios enviados por el servidor cuando Planorha está cerrada.</p></section>
         <section class="settings-card"><p class="eyebrow">Almacenamiento</p><h2>Versión inicial</h2><p>Los datos se guardan en este navegador y se sincronizan con la cuenta central.</p></section>
         <section class="settings-card"><p class="eyebrow">Zona de cuidado</p><h2>Restablecer</h2><p>Elimina tareas, listas y categorías de todos los dispositivos sincronizados.</p><button class="button button-danger" data-action="reset-data">Borrar todos los datos</button></section>
       </div>`;
@@ -505,7 +479,7 @@ import {
       if (action === 'reset-data') element.addEventListener('click', resetData);
       if (action === 'install-app') element.addEventListener('click', installApp);
       if (action === 'enable-notifications') element.addEventListener('click', enableNotifications);
-      if (action === 'test-notification') element.addEventListener('click', () => showNotification('Planorha', 'Las notificaciones están funcionando.'));
+      if (action === 'test-notification') element.addEventListener('click', testNotificationNow);
       if (action === 'edit-week-task') element.addEventListener('click', () => openTaskDialog(state.tasks.find(task => task.id === element.dataset.taskId)));
     });
 
@@ -925,17 +899,37 @@ import {
           body,
           icon: '/icons/icon-192.png',
           badge: '/icons/icon-192.png',
-          tag: taskId ? `planorha-task-${taskId}` : 'planorha-test',
+          tag: taskId ? `planorha-task-${taskId}` : `planorha-test-${Date.now()}`,
           renotify: false,
-          data: { url: taskId ? `/#tareas` : '/#hoy', taskId }
+          requireInteraction: false,
+          data: { url: taskId ? '/#tareas' : '/#hoy', taskId }
         });
       } else {
-        new Notification(title, { body, icon: '/icons/icon-192.png' });
+        new Notification(title, { body, icon: '/icons/icon-192.png', tag: `planorha-test-${Date.now()}` });
       }
       return true;
     } catch (error) {
       console.warn('No se pudo mostrar la notificación:', error);
       return false;
+    }
+  }
+
+  async function testNotificationNow(event) {
+    const button = event?.currentTarget;
+    if (button) button.disabled = true;
+    try {
+      if (!('Notification' in window)) {
+        showToast('Este navegador no admite notificaciones.');
+        return;
+      }
+      if (Notification.permission !== 'granted') {
+        showToast('Primero habilitá las notificaciones del sitio.');
+        return;
+      }
+      const shown = await showNotification('Planorha', 'La notificación de prueba funciona correctamente.');
+      showToast(shown ? 'Aviso de prueba enviado a Windows.' : 'Windows o el navegador bloquearon el aviso.');
+    } finally {
+      if (button) button.disabled = false;
     }
   }
 
@@ -1006,7 +1000,7 @@ import {
   async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=5');
+      const registration = await navigator.serviceWorker.register('/sw.js?v=8');
       registration.addEventListener('updatefound', () => {
         const worker = registration.installing;
         worker?.addEventListener('statechange', () => {
