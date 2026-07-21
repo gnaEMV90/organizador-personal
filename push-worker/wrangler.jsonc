@@ -6,6 +6,12 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "invocation_logs": true
+    }
+  },
   "vars": {
     "VAPID_PUBLIC_KEY": "BBE6XjGoS7CvkwXtrDBqxAOJhbWf9FwEbPYqban5zor__rFALZw2QvmVe3SGlp5eZ5zHBFxaaWIZRWFWoJQta0g",
     "VAPID_SUBJECT": "mailto:german.andrighetti@gmail.com"
