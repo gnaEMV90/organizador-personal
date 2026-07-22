@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eef3f0" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    (() => {
+      try {
+        const preference = localStorage.getItem('planorha.theme.v1') || 'system';
+        const dark = preference === 'dark' || (preference === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch { document.documentElement.dataset.theme = 'light'; }
+    })();
+  </script>
+  <link rel="stylesheet" href="/modern.css?v=1" />
+  <link rel="stylesheet" href="/admin.css?v=1" />
+  <title>Administración · Planorha</title>
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <a class="admin-brand" href="/#ajustes"><span>P</span><strong>Planorha</strong></a>
+      <div><p class="eyebrow">ADMINISTRACIÓN</p><h1>Usuarios y pruebas</h1></div>
+      <a class="button button-ghost" href="/#ajustes">Volver a Planorha</a>
+    </header>
+    <section id="admin-message" class="admin-message">Cargando…</section>
+    <section id="admin-content" hidden>
+      <div class="admin-stats" id="admin-stats"></div>
+      <section class="admin-panel">
+        <div class="admin-toolbar"><div><h2>Usuarios</h2><p>Estados de cuenta, pruebas y dispositivos activos.</p></div><input id="admin-search" type="search" placeholder="Buscar por nombre o correo" /></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Usuario</th><th>Estado</th><th>Prueba</th><th>Sesiones</th><th>Registro</th><th>Acciones</th></tr></thead><tbody id="admin-users"></tbody></table></div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="/admin.js?v=1"></script>
+</body>
+</html>
