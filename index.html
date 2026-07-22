@@ -55,7 +55,7 @@
         <div>
           <p class="eyebrow" id="today-label"></p>
           <h1 id="view-title">Hoy</h1>
-          <span class="mobile-sync-chip storage-status js-sync-status" data-status="connecting"><i></i> Conectando…</span>
+          <span class="mobile-sync-chip storage-status js-sync-status" data-status="connecting" role="button" tabindex="0" title="Tocar para reintentar la sincronización"><i></i> Conectando…</span>
         </div>
         <div class="topbar-actions">
           <button class="icon-button mobile-settings-button" type="button" data-view="ajustes" aria-label="Abrir Ajustes" title="Ajustes">⚙</button>
@@ -180,6 +180,7 @@
 
   <script src="/push-client.js?v=10" defer></script>
   <script src="/push-ui.js?v=10" defer></script>
+  <script src="/connectivity-recovery.js?v=1" defer></script>
   <script type="module" src="/manual-order-addon.js?v=5"></script>
   <script type="module" src="/bootstrap.js?v=6"></script>
 </body>
