@@ -63,7 +63,7 @@ Para habilitar los correos transaccionales se debe:
 6. Guardar `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` y `GMAIL_REFRESH_TOKEN` directamente como secretos del entorno Preview de Cloudflare.
 7. Enviar un correo real de verificación y otro de recuperación antes de habilitar el registro público.
 
-La cuenta Gmail estándar tiene límites diarios de envío y se utilizará como solución inicial. El adaptador permite migrar más adelante a un proveedor transaccional con dominio propio sin modificar los flujos de registro.
+La cuenta Gmail estándar se utilizará como solución inicial y admite hasta 500 mensajes salientes diarios. El adaptador permite migrar más adelante a un proveedor transaccional con dominio propio sin modificar los flujos de registro.
 
 ## Prueba gratuita
 
