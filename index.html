@@ -3,23 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#20352f" />
+  <meta name="theme-color" content="#eef3f0" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="Planorha: tareas, calendario, listas y compras en un solo lugar." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Planorha" />
+  <script>
+    (() => {
+      try {
+        const preference = localStorage.getItem('planorha.theme.v1') || 'system';
+        const dark = preference === 'dark' || (preference === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
   <link rel="manifest" href="/manifest.webmanifest?v=5" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/sync.css?v=4" />
-  <link rel="stylesheet" href="/productivity.css?v=5" />
-  <style>
-    .mobile-settings-button { display: none; }
-    @media (max-width: 780px) {
-      .mobile-settings-button { display: grid; place-items: center; }
-    }
-  </style>
+  <link rel="stylesheet" href="/styles.css?v=11" />
+  <link rel="stylesheet" href="/sync.css?v=5" />
+  <link rel="stylesheet" href="/productivity.css?v=6" />
+  <link rel="stylesheet" href="/modern.css?v=1" />
   <title>Planorha</title>
 </head>
 <body>
@@ -58,6 +67,7 @@
           <span class="mobile-sync-chip storage-status js-sync-status" data-status="connecting" role="button" tabindex="0" title="Tocar para reintentar la sincronización"><i></i> Conectando…</span>
         </div>
         <div class="topbar-actions">
+          <button class="icon-button theme-toggle-button" id="theme-toggle-button" type="button" aria-label="Cambiar tema" title="Cambiar tema"><span aria-hidden="true">◐</span></button>
           <button class="icon-button mobile-settings-button" type="button" data-view="ajustes" aria-label="Abrir Ajustes" title="Ajustes">⚙</button>
           <button class="button button-ghost" id="install-button" hidden>Instalar app</button>
           <button class="button button-primary" id="quick-add-button">+ Agregar</button>
@@ -178,6 +188,7 @@
   <input id="import-input" type="file" accept="application/json,.json" hidden />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="/theme.js?v=1" defer></script>
   <script src="/push-client.js?v=10" defer></script>
   <script src="/push-ui.js?v=10" defer></script>
   <script src="/connectivity-recovery.js?v=1" defer></script>
