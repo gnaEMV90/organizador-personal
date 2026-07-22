@@ -30,9 +30,10 @@
   <link rel="stylesheet" href="/productivity.css?v=6" />
   <link rel="stylesheet" href="/modern.css?v=1" />
   <link rel="stylesheet" href="/mobile-fixes.css?v=1" />
+  <link rel="stylesheet" href="/auth.css?v=1" />
   <title>Planorha</title>
 </head>
-<body>
+<body class="auth-pending">
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegación principal">
       <a class="brand" href="#hoy" aria-label="Ir al inicio">
@@ -190,6 +191,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="/theme.js?v=1" defer></script>
+  <script type="module" src="/saas-entry.js?v=1"></script>
   <script src="/push-client.js?v=10" defer></script>
   <script src="/push-ui.js?v=10" defer></script>
   <script src="/connectivity-recovery.js?v=1" defer></script>
