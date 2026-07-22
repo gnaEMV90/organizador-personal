@@ -8,6 +8,7 @@ const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const pushClient = await readFile(new URL('../push-client.js', import.meta.url), 'utf8');
 const themeClient = await readFile(new URL('../theme.js', import.meta.url), 'utf8');
 const modernStyles = await readFile(new URL('../modern.css', import.meta.url), 'utf8');
+const mobileFixes = await readFile(new URL('../mobile-fixes.css', import.meta.url), 'utf8');
 
 test('el manifiesto permite instalar Planorha en modo independiente', () => {
   assert.equal(manifest.name, 'Planorha');
@@ -24,6 +25,7 @@ test('la página contempla áreas seguras y carga los recursos versionados', () 
   assert.match(index, /styles\.css\?v=11/);
   assert.match(index, /productivity\.css\?v=6/);
   assert.match(index, /modern\.css\?v=1/);
+  assert.match(index, /mobile-fixes\.css\?v=1/);
   assert.match(index, /theme\.js\?v=1/);
   assert.match(index, /bootstrap\.js\?v=6/);
   assert.match(index, /push-client\.js\?v=10/);
@@ -39,6 +41,13 @@ test('el selector visual ofrece tema claro oscuro y automático', () => {
   assert.match(modernStyles, /mobile-nav/);
 });
 
+test('los controles móviles quedan centrados y separados', () => {
+  assert.match(mobileFixes, /topbar-actions/);
+  assert.match(mobileFixes, /right: max\(14px, env\(safe-area-inset-right\)\)/);
+  assert.match(mobileFixes, /mobile-add::before/);
+  assert.match(mobileFixes, /mobile-nav-item\[data-view="tareas"\]::before/);
+});
+
 test('el cliente push renueva suscripciones creadas con otra clave VAPID', () => {
   assert.match(pushClient, /subscriptionNeedsRefresh/);
   assert.match(pushClient, /applicationServerKey/);
@@ -47,12 +56,13 @@ test('el cliente push renueva suscripciones creadas con otra clave VAPID', () =>
 });
 
 test('el service worker guarda el shell y responde a push y notificaciones', () => {
-  assert.match(serviceWorker, /planorha-v12/);
+  assert.match(serviceWorker, /planorha-v13/);
   assert.match(serviceWorker, /addEventListener\('push'/);
   assert.match(serviceWorker, /showNotification/);
   assert.match(serviceWorker, /notificationclick/);
   assert.match(serviceWorker, /productivity-core\.js\?v=5/);
   assert.match(serviceWorker, /modern\.css\?v=1/);
+  assert.match(serviceWorker, /mobile-fixes\.css\?v=1/);
   assert.match(serviceWorker, /theme\.js\?v=1/);
   assert.match(serviceWorker, /push-client\.js\?v=10/);
 });
@@ -64,6 +74,7 @@ test('los recursos locales del shell existen', async () => {
     '../sync.css',
     '../productivity.css',
     '../modern.css',
+    '../mobile-fixes.css',
     '../theme.js',
     '../connectivity-recovery.js',
     '../bootstrap.js',
