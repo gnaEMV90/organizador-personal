@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planorha-v10';
+const CACHE_NAME = 'planorha-v11';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const APP_SHELL = [
   '/productivity.css?v=5',
   '/push-client.js?v=10',
   '/push-ui.js?v=10',
+  '/connectivity-recovery.js?v=1',
   '/manual-order-addon.js?v=5',
   '/bootstrap.js?v=6',
   '/sync-core.js?v=4',
