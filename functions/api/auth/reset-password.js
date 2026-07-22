@@ -2,7 +2,8 @@ import {
   auditAuthEvent,
   consumeAuthToken,
   findUserById,
-  setUserPassword
+  setUserPassword,
+  validatePasswordPolicy
 } from '../../_lib/auth.js';
 import { authError, requireDatabase } from '../../_lib/auth-http.js';
 import { assertSameOrigin, json, readJsonBody } from '../../_lib/http.js';
@@ -14,6 +15,9 @@ export async function onRequestPost({ request, env }) {
   try {
     const body = await readJsonBody(request);
     if (body.password !== body.confirmPassword) return json({ error: 'Las contraseñas no coinciden.' }, 400);
+    const policyError = validatePasswordPolicy(body.password);
+    if (policyError) return json({ error: policyError }, 400);
+
     const token = await consumeAuthToken(env.DB, String(body.token || ''), 'reset_password');
     if (!token) return json({ error: 'El enlace venció o ya fue utilizado.' }, 400);
     await setUserPassword(env.DB, token.user_id, body.password);
