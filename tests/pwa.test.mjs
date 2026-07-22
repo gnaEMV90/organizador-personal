@@ -9,6 +9,8 @@ const pushClient = await readFile(new URL('../push-client.js', import.meta.url),
 const themeClient = await readFile(new URL('../theme.js', import.meta.url), 'utf8');
 const modernStyles = await readFile(new URL('../modern.css', import.meta.url), 'utf8');
 const mobileFixes = await readFile(new URL('../mobile-fixes.css', import.meta.url), 'utf8');
+const authStyles = await readFile(new URL('../auth.css', import.meta.url), 'utf8');
+const saasEntry = await readFile(new URL('../saas-entry.js', import.meta.url), 'utf8');
 
 test('el manifiesto permite instalar Planorha en modo independiente', () => {
   assert.equal(manifest.name, 'Planorha');
@@ -19,13 +21,16 @@ test('el manifiesto permite instalar Planorha en modo independiente', () => {
   assert.ok(manifest.icons.some(icon => icon.sizes === '512x512'));
 });
 
-test('la página contempla áreas seguras y carga los recursos versionados', () => {
+test('la página contempla áreas seguras y carga acceso y recursos versionados', () => {
   assert.match(index, /viewport-fit=cover/);
   assert.match(index, /manifest\.webmanifest\?v=5/);
   assert.match(index, /styles\.css\?v=11/);
   assert.match(index, /productivity\.css\?v=6/);
   assert.match(index, /modern\.css\?v=1/);
   assert.match(index, /mobile-fixes\.css\?v=1/);
+  assert.match(index, /auth\.css\?v=1/);
+  assert.match(index, /class="auth-pending"/);
+  assert.match(index, /saas-entry\.js\?v=1/);
   assert.match(index, /theme\.js\?v=1/);
   assert.match(index, /bootstrap\.js\?v=6/);
   assert.match(index, /push-client\.js\?v=10/);
@@ -48,6 +53,16 @@ test('los controles móviles quedan centrados y separados', () => {
   assert.match(mobileFixes, /mobile-nav-item\[data-view="tareas"\]::before/);
 });
 
+test('la capa SaaS contempla acceso, prueba, solo lectura y datos locales separados', () => {
+  assert.match(authStyles, /auth-screen/);
+  assert.match(authStyles, /trial-banner/);
+  assert.match(saasEntry, /\/api\/auth\/register/);
+  assert.match(saasEntry, /trialDaysRemaining/);
+  assert.match(saasEntry, /accessMode !== 'read_only'/);
+  assert.match(saasEntry, /planorha\.activeUser\.v1/);
+  assert.match(saasEntry, /activateUser/);
+});
+
 test('el cliente push renueva suscripciones creadas con otra clave VAPID', () => {
   assert.match(pushClient, /subscriptionNeedsRefresh/);
   assert.match(pushClient, /applicationServerKey/);
@@ -56,36 +71,26 @@ test('el cliente push renueva suscripciones creadas con otra clave VAPID', () =>
 });
 
 test('el service worker guarda el shell y responde a push y notificaciones', () => {
-  assert.match(serviceWorker, /planorha-v13/);
+  assert.match(serviceWorker, /planorha-v14/);
   assert.match(serviceWorker, /addEventListener\('push'/);
   assert.match(serviceWorker, /showNotification/);
   assert.match(serviceWorker, /notificationclick/);
   assert.match(serviceWorker, /productivity-core\.js\?v=5/);
   assert.match(serviceWorker, /modern\.css\?v=1/);
   assert.match(serviceWorker, /mobile-fixes\.css\?v=1/);
+  assert.match(serviceWorker, /auth\.css\?v=1/);
+  assert.match(serviceWorker, /saas-entry\.js\?v=1/);
   assert.match(serviceWorker, /theme\.js\?v=1/);
   assert.match(serviceWorker, /push-client\.js\?v=10/);
 });
 
 test('los recursos locales del shell existen', async () => {
   const expected = [
-    '../index.html',
-    '../styles.css',
-    '../sync.css',
-    '../productivity.css',
-    '../modern.css',
-    '../mobile-fixes.css',
-    '../theme.js',
-    '../connectivity-recovery.js',
-    '../bootstrap.js',
-    '../sync-core.js',
-    '../productivity-core.js',
-    '../manual-order-addon.js',
-    '../push-client.js',
-    '../push-ui.js',
-    '../app.js',
-    '../icons/icon-192.png',
-    '../icons/icon-512.png'
+    '../index.html', '../styles.css', '../sync.css', '../productivity.css', '../modern.css',
+    '../mobile-fixes.css', '../auth.css', '../saas-entry.js', '../theme.js',
+    '../connectivity-recovery.js', '../bootstrap.js', '../sync-core.js',
+    '../productivity-core.js', '../manual-order-addon.js', '../push-client.js',
+    '../push-ui.js', '../app.js', '../icons/icon-192.png', '../icons/icon-512.png'
   ];
   await Promise.all(expected.map(path => access(new URL(path, import.meta.url))));
 });
