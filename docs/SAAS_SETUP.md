@@ -20,7 +20,7 @@ Estos valores deben cargarse como secretos de Cloudflare y nunca confirmarse en 
 
 Planorha obtiene tokens de acceso de corta duración mediante OAuth y envía los mensajes con `users.messages.send`. La contraseña de Gmail no se solicita ni se almacena.
 
-> Estado de Preview: credenciales Gmail cargadas en Cloudflare y despliegue de validación disparado el 23/07/2026.
+> Estado de Preview: variables, secretos Gmail y binding `DB` hacia `planorha-preview-db` configurados. Redespliegue de validación disparado el 24/07/2026.
 
 ### Adaptador alternativo
 
