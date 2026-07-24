@@ -1,0 +1,33 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+body { min-height: 100vh; margin: 0; color: var(--ink); background: var(--bg); }
+.admin-shell { width: min(1420px, 100%); margin: 0 auto; padding: 28px clamp(16px, 4vw, 58px) 70px; }
+.admin-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 20px; align-items: center; margin-bottom: 28px; }
+.admin-brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.admin-brand span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: #fff; background: linear-gradient(145deg, #28745d, #195340); font-family: Georgia, serif; font-size: 23px; }
+.admin-header h1 { margin: 4px 0 0; font-size: clamp(27px, 4vw, 42px); letter-spacing: -.045em; }
+.admin-message { padding: 18px; border: 1px solid var(--line); border-radius: 16px; color: var(--muted); background: var(--surface); }
+.admin-message.is-error { color: var(--danger); background: var(--danger-soft); }
+.admin-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.admin-stat { min-height: 105px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.admin-stat small, .admin-stat strong { display: block; }
+.admin-stat small { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-stat strong { margin-top: 10px; font-size: 32px; letter-spacing: -.04em; }
+.admin-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.admin-toolbar { display: flex; justify-content: space-between; gap: 18px; align-items: center; padding: 20px; border-bottom: 1px solid var(--line); }
+.admin-toolbar h2 { margin: 0; font-size: 22px; }
+.admin-toolbar p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+.admin-toolbar input { width: min(330px, 100%); min-height: 42px; border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; color: var(--ink); background: var(--input-bg); }
+.admin-table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 960px; }
+th, td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+th { color: var(--muted); background: var(--surface-soft); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+td { font-size: 11px; }
+.user-cell strong, .user-cell small { display: block; }
+.user-cell small { margin-top: 3px; color: var(--muted); }
+.status-badge { display: inline-flex; padding: 5px 8px; border-radius: 999px; color: var(--primary); background: var(--primary-soft); font-size: 8px; font-weight: 820; }
+.status-badge.is-expired, .status-badge.is-suspended { color: var(--danger); background: var(--danger-soft); }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.admin-actions button { min-height: 31px; border: 1px solid var(--line); border-radius: 9px; padding: 5px 8px; color: var(--ink-soft); background: var(--surface-soft); cursor: pointer; font-size: 8px; font-weight: 760; }
+.admin-actions button:hover { border-color: var(--primary); }
+@media (max-width: 900px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } .admin-header { grid-template-columns: 1fr auto; } .admin-header > div { grid-column: 1 / -1; grid-row: 2; } .admin-toolbar { align-items: stretch; flex-direction: column; } .admin-toolbar input { width: 100%; } }
