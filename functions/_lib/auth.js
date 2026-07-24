@@ -1,7 +1,7 @@
 const SESSION_COOKIE = 'planorha_session';
 const SESSION_DAYS = 30;
 const TRIAL_DAYS = 7;
-const PASSWORD_ITERATIONS = 310_000;
+const PASSWORD_ITERATIONS = 100_000;
 const TOKEN_TTL_MINUTES = {
   verify_email: 24 * 60,
   reset_password: 60
