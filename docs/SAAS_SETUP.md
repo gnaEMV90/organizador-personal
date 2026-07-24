@@ -20,6 +20,8 @@ Estos valores deben cargarse como secretos de Cloudflare y nunca confirmarse en 
 
 Planorha obtiene tokens de acceso de corta duración mediante OAuth y envía los mensajes con `users.messages.send`. La contraseña de Gmail no se solicita ni se almacena.
 
+> Estado de Preview: credenciales Gmail cargadas en Cloudflare y despliegue de validación disparado el 23/07/2026.
+
 ### Adaptador alternativo
 
 La aplicación conserva compatibilidad con un proveedor HTTPS genérico para una futura migración a un dominio propio:
