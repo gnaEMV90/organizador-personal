@@ -1,0 +1,38 @@
+name: Aplicar compatibilidad PBKDF2 en Preview
+
+on:
+  push:
+    branches:
+      - feature/saas-auth-trial
+    paths:
+      - .github/workflows/temp-fix-pbkdf2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener la rama
+        uses: actions/checkout@v4
+        with:
+          ref: feature/saas-auth-trial
+          fetch-depth: 0
+
+      - name: Ajustar iteraciones PBKDF2 y retirar workflow temporal
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i "s/const PASSWORD_ITERATIONS = 310_000;/const PASSWORD_ITERATIONS = 100_000;/" functions/_lib/auth.js
+          grep -q "const PASSWORD_ITERATIONS = 100_000;" functions/_lib/auth.js
+          rm .github/workflows/temp-fix-pbkdf2.yml
+
+      - name: Confirmar cambio
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add functions/_lib/auth.js .github/workflows/temp-fix-pbkdf2.yml
+          git commit -m "fix: adaptar PBKDF2 al límite de Cloudflare Workers"
+          git push origin HEAD:feature/saas-auth-trial
